@@ -4,6 +4,7 @@ library(car)
 library(lmtest)
 library(tseries)
 library(sandwich)
+library(stargazer)
 
 #### WCZYTANIE I WSTĘPNE OGARNIĘCIE DANYCH ####
 
@@ -724,7 +725,7 @@ model <- lm(data = data.df,
 #### WALIDACJA MODELU ####
 
 # Specyfikacja po modelowaniu
-model <- lm(data = data.df,
+model_bef_wal <- lm(data = data.df,
             I(VO_B02 / mean(VO_B02)) ~
               I(TI_SEASONALITY / mean(TI_SEASONALITY)) +
               DN_adj_B02_S02_12XCN0500_2GR +
@@ -739,8 +740,8 @@ model <- lm(data = data.df,
               I(EX_NU_B02 / mean(EX_NU_B02)) +
               TV50_B02_2011_H1)
 
-summary(model)
-vif(model)
+summary(model_bef_wal)
+vif(model_bef_wal)
 
 # Postać i podstawowe statystyki modelu
 
@@ -765,7 +766,7 @@ vif(model)
 
 # Reszty
 
-jarque.bera.test(model$residuals)
+jarque.bera.test(model_bef_wal$residuals)
 # brak normalności reszt
 
 # Wykres reszt
@@ -773,7 +774,7 @@ p <-  plot_ly(data.df,
               type = "scatter",
               mode = 'lines',
               x = ~Date,
-              y = ~model$residuals,
+              y = ~model_bef_wal$residuals,
               name = "Residuals")
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
@@ -910,8 +911,9 @@ vif(model)
 # - ładnie wchodzi
 
 jarque.bera.test(model$residuals)
-# normalności reszt znów poprawiona, pval 6%, pytanie jak wcześniej, czy lepiej
-#   poprawiać i oddawać stopnie swobody czy to jest wystarczające
+# normalności reszt dalej przechodzi, pval 6%, ale niższe niż wcześniej,
+#   R^2 poprawia trochę ale może już podchodzić pod overfitting, więc nie
+#   ma co tego uwzględniać
 
 # Wykres reszt
 p <-  plot_ly(data.df,
@@ -923,14 +925,72 @@ p <-  plot_ly(data.df,
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 # zostały od największych: 28.03.2011, 27.06.2011, 29.08.2011, 05.04.2010
+#   wygląda chyba faktycznie mniej normalnie niż poprzedni.
 
+# Specyfikacja modelu z normalnymi resztami
+model_norm <- lm(data = data.df,
+            I(VO_B02 / mean(VO_B02)) ~
+              I(TI_SEASONALITY / mean(TI_SEASONALITY)) +
+              DN_adj_B02_S02_12XCN0500_2GR +
+              DN_adj_B02_S02_08XCN0500_1GR +
+              DN_adj_B02_S02_12XCN0500 +
+              log(PR_B02_S02_04XCN0500) +  
+              TI_H_MAY +
+              TI_H_EASTER_SUNDAY +
+              TI_H_HALLOWEEN_BEFORE +
+              TI_H_PENTECOST +
+              I(TI_TEM_AVG - TI_TEM_AVG_NORM) +
+              I(EX_NU_B02 / mean(EX_NU_B02)) +
+              I(TI_X_2011_05_02 * DN_adj_B02_S02_12XCN0500_2GR)
+)
 
+summary(model_norm)
+vif(model_norm)
+jarque.bera.test(model_norm$residuals)
 
+# - aby uzyskać normalność reszt usunięty został ostatecznie 1 outlier,  
+#     02.05.2011. Zidentyfikowaną przyczyną odchylenia była promocja cenowa
+#     na in-oucie B02_S02_12XCN0500_2GR. Test Jarque-Bera daje dla modelu
+#     pval 9%. R^2 wynosi 93,4%, skorygowane 92,5%
 
+# Liniowość formy funkcyjnej
 
-reset(model, power = 2:3, type = "fitted")
-bptest(model)
-bgtest(model)
+reset(model_norm, power = 2:3, type = "fitted")
+# RESET nie przechodzi, więc występują jakieś nieliniowości, ale się tym nie
+#   przejmujemy
+
+# Homoskedastyczność reszt i autokorelacja
+
+bptest(model_norm)
+# występuje heteroskedastyczność
+
+bgtest(model_norm)
+# występuje autokorelacja
+
+# Aby się ich pozbyć, używamy macierzy odpornej
+model_hac <- coeftest(model_norm, vcov. = vcovHAC(model_norm))
+
+# Porównanie modeli przed walidacją, z normalnymi resztami i z macierza odporną
+stargazer(model_bef_wal, model_norm, model_hac,
+          type = "text", align = TRUE, style = "default", df = FALSE)
+
+# Model końcowy
+model_hac
+
+# - model końcowy nie rózni się mocno od modelu uzyskanego podczas procesu mo-
+#     delowania, więc praktycznie wszystkie wnioski zostają. Zaszły warte od-
+#     notowania zmiany: 
+#     - inkrementalność B02_S02_12XCN0500 wyniosła 120%, czyli więcej niż kla-
+#         syczny przedział <0; 100%>, ale patrząc na wykres wolumenów to mo-
+#         nawet tak być, bo to był jeden bardzo mocny strzał w momencie jak
+#         jak akurat większość spadała. A nawet jeśli nie, to może to wynikać
+#         danych czy coś, więc ogólnie wydaje się i tak jak najbardziej ok
+#     - majówka wyszła poza klasyczny próg 5%, jej pval wynosi 18%. Jednak
+#         oszacowanie parametru jest ok, i ma sens marketingowy, więc zostawiam
+#     - TV50_B02_2011_H1 weszło z pval na 80%, więc było nie do uratowania i 
+#         zostało wyrzucone
+#   R^2 w modelu końcowym wyniosło 93,4%, a skorygowane R^2 92,6%
+
 
 
 
