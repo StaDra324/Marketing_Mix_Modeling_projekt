@@ -122,7 +122,7 @@ browseURL("wykres.html")
 #   4 SKU są stałe). Oprócz tego występują in-outy, z których szczegól-
 #   nie interesujące są puszki 500 ml - ośmiopak z gratisem, dwunastopak
 #   i dwunastopak z dwoma gratisami, i to te trzy in-outy wydają się być
-#   powodem zmiany zachowania marki (o którym niżej)
+#   powodem zmiany zachowania marki
 
 
 # Wybór SKU do dalszych analiz - udział w wolumenie (kryterium ~5%)
@@ -149,7 +149,8 @@ sku_shares %>%
 #   wyżej (przy analizie wykresu wolumenów), oprócz pojedynczej puszki
 #   500 ml z S01 i ośmiopaku bez gratisu z S02 (SKU nieomawiane również
 #   zostają pominięte). Zastanowić możnaby się głębiej nad ośmiopakiem,
-#   bo wydawał się mieć potencjał, ale to najwyżej na dalszym etapie. 
+#   bo wydawał się mieć potencjał, ale to najwyżej na dalszym etapie
+rm(sku_names)
 
 # Czyli wybrane SKU to B02_S01_04XCN0500, B02_S02_01XCN0500,
 #   B02_S02_01XNR0660, B02_S02_04XCN0500, B02_S02_08XCN0500_1GR,
@@ -188,6 +189,7 @@ browseURL("wykres.html")
 #   dla pozostałych in-outów nie. Cena odwrotnie - dla in-outów niewiele wno-
 #   si, a dla stałych raczej więcej niż dystrybucja, ale najlpiej chyba po-
 #   łączyć
+rm(selected_cols_tmp)
 
 # Wzór na przekształcenie dające betę jako wsp. inkrementalności:
 #   [DN_INOUT * sum(VO_INOUT)]  /  [sum(DN_INOUT) * mean(VO_MARKA)]
@@ -217,6 +219,7 @@ p <- data.df.1 %>%
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 # są w miarę różne, nie ma co uśredniać
+rm(selected_cols_tmp)
 
 
 # Wykres liczby sklepów i wolumenu marki
@@ -358,6 +361,8 @@ selected_sku_comp <- sku_shares_comp$sku
 #   wyższym share wpłynie na model. 
 # Podobnie jeśli chodzi o ekspozycje konkurencji, sprawdzę tylko B01 w modelu
 #   bo było największe
+rm(brand_names_comp, selected_brands_comp, subbrand_names_comp, sku_names_comp,
+   selected_subbrands_comp, brand_shares_comp, subbrand_shares_comp, tmp)
 
 ## ANALIZA MEDIÓW MARKI ##
 
@@ -462,12 +467,6 @@ browseURL("wykres.html")
 
 # Rozbicie TV na półrocza
 
-# Dodanie identyfikatorów pierwszych półroczy 2010 i 2011
-data.df <- data.df %>%
-  mutate(TI_Y_2010_H1 = as.integer(
-    Date >= as.Date("2010-01-01") & Date <= as.Date("2010-06-30")),
-         TI_Y_2011_H1 = as.integer(
-    Date >= as.Date("2011-01-01") & Date <= as.Date("2011-06-30")))
 data.df$TI_Y_2010_H1
 data.df$TI_Y_2010_H2
 data.df$TI_Y_2011_H1
@@ -505,9 +504,9 @@ htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 # tutaj jest ciekawie, bo są tylko krótkie strzały, i przy największym 
 #   wzroście OH jest też akurat najwyższy wzrost wolumenu, z drugiej stro-
-#   pozostałe strzały OH nie wydają się wpływać, a dodatkowo pokrywają się
-#   dwa z trzech strzałów, w tym ten wyglądający na mający wpływ pokrywają
-#   się z SKU B02_S02_12XCN0500_2GR, więc coś tam może być pozorne. AdStock
+#   pozostałe strzały OH nie wydają się wpływać, a dodatkowo dwa z trzech 
+#   strzałów , w tym ten wyglądający na mający wpływ pokrywają się z 
+#   SKU B02_S02_12XCN0500_2GR, więc coś tam może być pozorne. AdStock
 #   z wykresu wybrałbym chyba OH00, na podstawie teorii co wcześniej można
 #   by wziąć 50%, zobaczymy co się stanie w modelu. Po zachowaniu w modelu
 #   (opisane w części modelowej) można jeszcze spróbować rozbić
@@ -598,13 +597,11 @@ model <- lm(data = data.df,
               #TI_H_EPIPHANY +
               #TI_H_HALLOWEEN +
               TI_H_HALLOWEEN_BEFORE +
-              #TI_H_INDEPENDENCE +  ewentualnie do dodania
               TI_H_PENTECOST +
-              # święta ewentualnie do sprawdzenia na łączną nieistotność
               I(TI_TEM_AVG - TI_TEM_AVG_NORM) +
-              I(EX_NU_B02 / mean(EX_NU_B02))
-              #DN_B01_S01_12XCN0500_2GR
-              #I(EX_NU_B01 / mean(EX_NU_B01))
+              I(EX_NU_B02 / mean(EX_NU_B02)) +
+              #DN_B01_S01_12XCN0500_2GR +
+              #I(EX_NU_B01 / mean(EX_NU_B01)) +
               #EV_FOOTBALL_WORLD_CUP +
               #EV_WINTER_OLYMPIC +
               #TV00_B02 +
@@ -625,9 +622,9 @@ model <- lm(data = data.df,
               #EC_UNE_MA5 +
 )
 
-# summary(model)
-# vif(model)
-# 
+summary(model)
+vif(model)
+ 
 # jarque.bera.test(model$residuals)
 # bptest(model)
 # bgtest(model)
@@ -721,6 +718,7 @@ model <- lm(data = data.df,
 # - TV konkurencji nie wchodzi, pval 67%
 
 # - makroekonomia nieistotna
+rm(model)
 
 #### WALIDACJA MODELU ####
 
@@ -807,9 +805,6 @@ browseURL("wykres.html")
 
 # Wstawiamy wzmocnienie działania
 
-data.df <- data.df %>%
-  mutate(TI_X_2011_05_02 = as.integer(Date == as.Date("2011-05-02")))
-
 model <- lm(data = data.df,
             I(VO_B02 / mean(VO_B02)) ~
               I(TI_SEASONALITY / mean(TI_SEASONALITY)) +
@@ -835,7 +830,8 @@ vif(model)
 #     dniona w modelu, ale zaburzyła ona inne oszacowania, i wyszła też współ-
 #     liniowość między nią a dystrybucją, więc zamiast tego wstawiam samą in-
 #     terakcję, nie jestem pewien w sumie z czym przemnożyć dzień, bo i dys-
-#     trybucja w obu formach i cena działają, na razie zostawiam cenę i do
+#     trybucja w obu formach i cena działają, na razie zostawiam inkremental-
+#     ność bo raczej się nie wstawia interakcji jak zmiennej nie ma samej i do
 #     doprecyzowania najwyżej. Niezależnie od tego co się wstawi, bardzo ład-
 #     nie wchodzi, jedyne co to podwyższa pval TV50_B02_2011_H1 na 82%, więc
 #     nie ma już za bardzo wyboru i to wyrzucam
@@ -883,9 +879,6 @@ browseURL("wykres.html")
 
 # Wstawiamy wzmocnienie działania
 
-data.df <- data.df %>%
-  mutate(TI_X_2011_10_03 = as.integer(Date == as.Date("2011-10-03")))
-
 model <- lm(data = data.df,
             I(VO_B02 / mean(VO_B02)) ~
               I(TI_SEASONALITY / mean(TI_SEASONALITY)) +
@@ -925,7 +918,8 @@ p <-  plot_ly(data.df,
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 # zostały od największych: 28.03.2011, 27.06.2011, 29.08.2011, 05.04.2010
-#   wygląda chyba faktycznie mniej normalnie niż poprzedni.
+#   wygląda chyba faktycznie mniej normalnie niż poprzedni
+rm(model)
 
 # Specyfikacja modelu z normalnymi resztami
 model_norm <- lm(data = data.df,
@@ -935,9 +929,9 @@ model_norm <- lm(data = data.df,
               DN_adj_B02_S02_08XCN0500_1GR +
               DN_adj_B02_S02_12XCN0500 +
               log(PR_B02_S02_04XCN0500) +  
-              TI_H_MAY +
+              #TI_H_MAY +
               TI_H_EASTER_SUNDAY +
-              TI_H_HALLOWEEN_BEFORE +
+              #TI_H_HALLOWEEN_BEFORE +
               TI_H_PENTECOST +
               I(TI_TEM_AVG - TI_TEM_AVG_NORM) +
               I(EX_NU_B02 / mean(EX_NU_B02)) +
@@ -955,7 +949,7 @@ jarque.bera.test(model_norm$residuals)
 
 # Liniowość formy funkcyjnej
 
-reset(model_norm, power = 2:3, type = "fitted")
+resettest(model_norm, power = 2:3, type = "fitted")
 # RESET nie przechodzi, więc występują jakieś nieliniowości, ale się tym nie
 #   przejmujemy
 
@@ -967,7 +961,8 @@ bptest(model_norm)
 bgtest(model_norm)
 # występuje autokorelacja
 
-# Aby się ich pozbyć, używamy macierzy odpornej
+# Wobec tego używamy macierzy odpornej
+coeftest(model_norm, vcov. = vcovHAC(model_norm))
 model_hac <- coeftest(model_norm, vcov. = vcovHAC(model_norm))
 
 # Porównanie modeli przed walidacją, z normalnymi resztami i z macierza odporną
@@ -992,9 +987,166 @@ model_hac
 #   R^2 w modelu końcowym wyniosło 93,4%, a skorygowane R^2 92,6%
 
 
+#### DEKOMPOZYJA MODELU ####
+
+# Jako, że coeftest nie tworzy obiektu, do dekompozycji używam model_norm
+
+options('max.print' = 10000)
+getOption('max.print')
+
+# Wybranie zmiennych i parametrów
+
+model_norm$model
+
+variables.df <- model_norm$model %>%
+  as_tibble() %>%
+  select(-1) %>%
+  mutate(Date = data.df$Date, '(Intercept)' = 1) %>%
+  select(Date, '(Intercept)', everything())
+
+# Przemnożenie parametrów przez średnią sprzedaż
+coeffs <- model_norm$coefficients * mean(data.df$VO_B02)
+
+## WYBÓR POZIOMÓW BAZOWYCH ##
+
+ref.lev <- rep(0, 13)
+names(ref.lev) <- colnames(variables.df[-1])
+ref.lev
+
+# Czynniki bazowe
+
+# Wykres indeksu sezonowości
+plot(x = variables.df$Date,
+     y = variables.df$`I(TI_SEASONALITY/mean(TI_SEASONALITY))`,
+     type = "l")
+
+
+#### 2. Poziomy debazowania - wybor ####
+
+#### CZYNNIKI BAZOWE ####
+
+
+plot(x = variables.df$date,
+     y = variables.df$`log(price.own)`,
+     type = "l")
+
+# widac tymczasowe obnizki cenowe, dobrze byloby wylapac ich wplyw - debazowanie do max
+
+ref.lev['log(price.own)'] <- max(variables.df$`log(price.own)`)
+
+
+plot(x = variables.df$date,
+     y = variables.df$distribution.numeric.own,
+     type = "l")
+
+# sporadyczne problemy z dystrybucja, warto wylapac ich wplyw, dystrybucja najczesciej na wysokim poziomie - do max
+
+ref.lev['distribution.numeric.own'] <- max(variables.df$distribution.numeric.own)
+
+plot(x = variables.df$date,
+     y = variables.df$`log(price.compet.2)`,
+     type = "l")
+
+# trudno zdecydowac po wykresie - w takich spornych przypadkach bezpieczna opcja: srednia z pierwszego polrocza
+
+
+ref.lev['log(price.compet.2)'] <- mean(variables.df$`log(price.compet.2)`[1:26])
+
+plot(x = variables.df$date,
+     y = variables.df$distribution.compet.1,
+     type = "l")
+
+
+# trudny i rzadki przypadek, ale w tym wypadku max ma chyba najlatwiejsza interpretacje (jednoznacznie ujemny wplyw zmiennej konkurencyjnej), 
+# dobrym wyborem beda tez srednia lub srednia z pierwszych miesiecy
+
+ref.lev['distribution.compet.1'] <- max(variables.df$`distribution.compet.1`)
+
+plot(x = variables.df$date,
+     y = variables.df$distribution.compet.2,
+     type = "l")
+
+# max jest outlierem - bylby duzy wplyw na plus, a nie do konca obrazuje to faktyczna sytuacje, srednia wydaje sie byc najlepszym rozwiazaniem
+
+ref.lev['distribution.compet.2'] <- mean(variables.df$`distribution.compet.2`)
+
+
+plot(x = variables.df$date,
+     y = variables.df$media.own,
+     type = "l")
+
+
+#### CZYNNIK INKREMENTALNY ####
+
+# czynniki inkrementalne - zawsze do 0 
+ref.lev['media.own'] <- 0
+
+ref.lev
+
+# przechodzimy na data framey z naszych wektorow
+
+ref.lev.df <- data.frame(variables = names(ref.lev),
+                         ref.lev = ref.lev)
+
+coeffs.df <- data.frame(variables = names(coeffs),
+                        coeffs = coeffs)
+
+#### 3. Odjecie poziomow debazowania od zmiennych i wymnozenie zmiennych razy parametry beta
+
+variables.debased.df <- variables.df %>%
+  pivot_longer(-date, names_to = 'variables', values_to = 'value') %>% # przejscie na dlugi format danych
+  left_join(ref.lev.df) %>% # dolaczamy kolumne z poziomem referencyjnym
+  mutate(value.debased = value - ref.lev) %>% # odejmujemy od zmiennej w kazdym tygodniu jej poziom bazowy
+  left_join(coeffs.df) %>% # dolaczenie wspolczynnikow
+  mutate(value.debased = value.debased * coeffs) #wymnozenie wspolczynnikow przez zmienne (bez poziomow bazowania! interesuje nas wplyw vs ten poziom)
 
 
 
+### 4. Dodanie poziomow debazowania * parametry do stalej (odjelismy ten efekt od wplywu zmiennych)
+
+
+base.levels.df <- variables.debased.df %>%
+  mutate(base.levels.sum = coeffs * ref.lev) %>%
+  group_by(date) %>%
+  summarise('(Intercept)' = sum(base.levels.sum)) %>%
+  pivot_longer(-date, names_to = 'variables', values_to = 'base.levels')
+
+# powstal data frame, ktory dla kazdego tygodnia ma przypisana wartosc poziomow bazowych, ktorych nie wliczamy
+# do wplywu poszczegolnych zmiennych - sa one traktowane jako wartosc bazowa i chcemy je dosumowac do stalej sprzedazy
+
+decomp.final.df <- variables.debased.df %>%
+  left_join(base.levels.df) %>%
+  mutate(base.levels = ifelse(is.na(base.levels), 0, base.levels)) %>%
+  mutate(value.final = value.debased + base.levels) %>%
+  select(date, variables, value.final)
+
+
+
+### 5. Sprawdzenie czy suma czynnikow zgadza sie z wartoscia fitted z modelu 
+
+check.df <- decomp.final.df %>%
+  group_by(date) %>%
+  summarise(value.final = sum(value.final)) %>%
+  bind_cols(fitted = model$fitted.values * mean(economiser.data.df$sales)) %>%
+  mutate(check = value.final - fitted)
+
+sum(check.df$check)
+
+
+
+#### 6. Przygotowanie sobie ramki danych do analizy
+
+
+decomp.final.df <- decomp.final.df %>%
+  pivot_wider(names_from = variables, values_from = value.final)
+
+data.final.df <- economiser.data.df %>%
+  select(date, sales) %>%
+  left_join(decomp.final.df)
+
+write.csv2(data.final.df, 'decomp_data_final.csv', row.names = F)
+
+#### GOTOWE !!!! ####
 
 
 
