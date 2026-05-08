@@ -830,7 +830,8 @@ vif(model)
 #     dniona w modelu, ale zaburzyła ona inne oszacowania, i wyszła też współ-
 #     liniowość między nią a dystrybucją, więc zamiast tego wstawiam samą in-
 #     terakcję, nie jestem pewien w sumie z czym przemnożyć dzień, bo i dys-
-#     trybucja w obu formach i cena działają, na razie zostawiam inkremental-
+#     trybucja w obu formach i cena działają, a w zasadzie cokolwiek działa bo
+#     chodzi przecież o efekt w jednym dniu. Na razie zostawiam inkremental-
 #     ność bo raczej się nie wstawia interakcji jak zmiennej nie ma samej i do
 #     doprecyzowania najwyżej. Niezależnie od tego co się wstawi, bardzo ład-
 #     nie wchodzi, jedyne co to podwyższa pval TV50_B02_2011_H1 na 82%, więc
@@ -929,9 +930,9 @@ model_norm <- lm(data = data.df,
               DN_adj_B02_S02_08XCN0500_1GR +
               DN_adj_B02_S02_12XCN0500 +
               log(PR_B02_S02_04XCN0500) +  
-              #TI_H_MAY +
+              TI_H_MAY +
               TI_H_EASTER_SUNDAY +
-              #TI_H_HALLOWEEN_BEFORE +
+              TI_H_HALLOWEEN_BEFORE +
               TI_H_PENTECOST +
               I(TI_TEM_AVG - TI_TEM_AVG_NORM) +
               I(EX_NU_B02 / mean(EX_NU_B02)) +
@@ -943,7 +944,7 @@ vif(model_norm)
 jarque.bera.test(model_norm$residuals)
 
 # - aby uzyskać normalność reszt usunięty został ostatecznie 1 outlier,  
-#     02.05.2011. Zidentyfikowaną przyczyną odchylenia była promocja cenowa
+#     02.05.2011. Przyczyną odchylenia była najpewniej promocja cenowa
 #     na in-oucie B02_S02_12XCN0500_2GR. Test Jarque-Bera daje dla modelu
 #     pval 9%. R^2 wynosi 93,4%, skorygowane 92,5%
 
@@ -969,7 +970,7 @@ model_hac <- coeftest(model_norm, vcov. = vcovHAC(model_norm))
 stargazer(model_bef_wal, model_norm, model_hac,
           type = "text", align = TRUE, style = "default", df = FALSE)
 
-# Model końcowy
+# Model końcowy (ostatecznie)
 model_hac
 
 # - model końcowy nie rózni się mocno od modelu uzyskanego podczas procesu mo-
@@ -985,6 +986,26 @@ model_hac
 #     - TV50_B02_2011_H1 weszło z pval na 80%, więc było nie do uratowania i 
 #         zostało wyrzucone
 #   R^2 w modelu końcowym wyniosło 93,4%, a skorygowane R^2 92,6%
+
+
+# Dopiero przy ponownym oglądaniu wykresu sezonowości w ramach dekompozycji
+#   jakoś sobie uświadomiłem, że majówka i halloween są stałe w czasie, więc
+#   powinny być uwzględnione już w sezonowości. To by też mogło tłumaczyć, 
+#   dlaczego przy modelu końcowym z macierzą odporną majówka wchodzi na w 
+#   miarę wysokie pval 18%. Z kolei po usunięciu majówki halloween też staje 
+#   się nieistotne. Można by więc rozważyć ich usunięcie z modelu. Usunięcie
+#   to praktycznie nie wpływa jednak  na pozostałe parametry, ani nie sprawia,
+#   żeby zaczęły wchodzić media (co by mogło oddać). Dodatkowo po ich usu-
+#   nięciu reszty przestają być normalne. Zatem, biorąc pod uwagę, że usunię-
+#   cie majówki i halloween wiązałoby się z koniecznością powrotu do poprzed-
+#   nich etapów (głównie resztowych, ale też ewentualnie ponownego sprawdze-
+#   nia części zmiennych), a ich obecność w modelu ma sens biznesowy, a także
+#   biorąc pod uwagę, że inne stałe święta (Boże Narodzenie, Nowy Rok) nie 
+#   były istotne, to zostawiam model w takiej postaci w jakiej jest (ogólnie
+#   wydaje mi się, że generalnie nie powinny być istotne będąc uchwycone w
+#   sezonowości, więc może to sezonowość jest nieprecyzyjna, ale nie ma czasu
+#   na takie rozkminy)
+# Czyli pomimo chwili zawahania model zostaje bez zmian
 
 
 #### DEKOMPOZYJA MODELU ####
@@ -1015,138 +1036,209 @@ ref.lev
 
 # Czynniki bazowe
 
-# Wykres indeksu sezonowości
+# Wykres indeksu sezonowości I(TI_SEASONALITY / mean(TI_SEASONALITY))
 plot(x = variables.df$Date,
      y = variables.df$`I(TI_SEASONALITY/mean(TI_SEASONALITY))`,
      type = "l")
+# nie ma nic co było by szczególnie warte uchwycenia
 
+# Po prostu średnia, a jako że mamy zmienną już jako indeks, to jako bazę naj-
+#   lepiej wziąć 1, i wtedy to będzie właśnie średni poziom sezonowości (śre-
+#   dnia z tej zmiennej policzona ręcznie też wyniesie zawsze właśnie 1)
+ref.lev['I(TI_SEASONALITY/mean(TI_SEASONALITY))'] <- 1
+#ref.lev['I(TI_SEASONALITY/mean(TI_SEASONALITY))'] <- mean(
+#  variables.df$`I(TI_SEASONALITY/mean(TI_SEASONALITY))`)
+#ref.lev['I(TI_SEASONALITY/mean(TI_SEASONALITY))']
 
-#### 2. Poziomy debazowania - wybor ####
-
-#### CZYNNIKI BAZOWE ####
-
-
-plot(x = variables.df$date,
-     y = variables.df$`log(price.own)`,
+# Wykres ceny log(PR_B02_S02_04XCN0500) 
+plot(x = variables.df$Date,
+     y = variables.df$`log(PR_B02_S02_04XCN0500)`,
      type = "l")
+# na początku była w miarę stała, potem zwiększyła poziom, potem znów, potem
+#   bardzo mocna chwilowa promocja i potem powrót na jeszcze wyższy poziom, a 
+#   w międzyczasie pomniejsze promocje. Warte wyłapania są na pewno zmiany
+#   poziomów i ta największa promocja, ale trochę się to wyklucza bo będzie 
+#   mniejsza z perspektywy początkowej ceny a tej po dwóch podwyżkach poziomu.
+#   Jako że to jest stały SKU, stanowiący absolutną podstawę sprzedaży, to 
+#   myślę, że z tych dwóch rzeczy istotniejsze są jednak zmiany poziomów
 
-# widac tymczasowe obnizki cenowe, dobrze byloby wylapac ich wplyw - debazowanie do max
+# Zgodnie z rozumowaniem powyżej, najlepszym poziomem będzie średnia z początku
+#   okresu, tam gdzie cena była w miarę stała, czyli przed pierwszą zmianą
+#   poziomu, czyli powiedzmy od początku do 05.04.2010
+ref.lev['log(PR_B02_S02_04XCN0500)'] <- mean(
+  variables.df$`log(PR_B02_S02_04XCN0500)`[1:14])
 
-ref.lev['log(price.own)'] <- max(variables.df$`log(price.own)`)
-
-
-plot(x = variables.df$date,
-     y = variables.df$distribution.numeric.own,
+# Wykres odchylenia temperatury I(TI_TEM_AVG - TI_TEM_AVG_NORM)
+plot(x = variables.df$Date,
+     y = variables.df$`I(TI_TEM_AVG - TI_TEM_AVG_NORM)`,
      type = "l")
+# nie ma nic szczególnie wartego uchwycenia
 
-# sporadyczne problemy z dystrybucja, warto wylapac ich wplyw, dystrybucja najczesciej na wysokim poziomie - do max
+# Najlepiej chyba dobrać poziom 0, czyli normę temperatury, ewentualnie średnią
+#   ale ona będzie raczej gorzej interpretowalna (a i tak co do zasady powin-
+#   też wyjść w okolicy 0)
+ref.lev['I(TI_TEM_AVG - TI_TEM_AVG_NORM)'] <- 0
+#ref.lev['I(TI_TEM_AVG - TI_TEM_AVG_NORM)'] <- mean(
+#  variables.df$`I(TI_TEM_AVG - TI_TEM_AVG_NORM)`)
+#ref.lev['I(TI_TEM_AVG - TI_TEM_AVG_NORM)']
 
-ref.lev['distribution.numeric.own'] <- max(variables.df$distribution.numeric.own)
+# Dla świąt kalendarzowych poziom bazowy to 0
+ref.lev['TI_H_MAY'] <- 0
+ref.lev['TI_H_EASTER_SUNDAY'] <- 0
+ref.lev['TI_H_HALLOWEEN_BEFORE'] <- 0
+ref.lev['TI_H_PENTECOST'] <- 0
 
-plot(x = variables.df$date,
-     y = variables.df$`log(price.compet.2)`,
-     type = "l")
+# Czynniki inkrementalne 
 
-# trudno zdecydowac po wykresie - w takich spornych przypadkach bezpieczna opcja: srednia z pierwszego polrocza
+# Dla czynników inkrementalnych poziom bazowy to 0
+ref.lev['DN_adj_B02_S02_12XCN0500_2GR'] <- 0
+ref.lev['DN_adj_B02_S02_08XCN0500_1GR'] <- 0
+ref.lev['DN_adj_B02_S02_12XCN0500'] <- 0
+ref.lev['I(EX_NU_B02/mean(EX_NU_B02))'] <- 0
+ref.lev['I(TI_X_2011_05_02 * DN_adj_B02_S02_12XCN0500_2GR)'] <- 0
 
-
-ref.lev['log(price.compet.2)'] <- mean(variables.df$`log(price.compet.2)`[1:26])
-
-plot(x = variables.df$date,
-     y = variables.df$distribution.compet.1,
-     type = "l")
-
-
-# trudny i rzadki przypadek, ale w tym wypadku max ma chyba najlatwiejsza interpretacje (jednoznacznie ujemny wplyw zmiennej konkurencyjnej), 
-# dobrym wyborem beda tez srednia lub srednia z pierwszych miesiecy
-
-ref.lev['distribution.compet.1'] <- max(variables.df$`distribution.compet.1`)
-
-plot(x = variables.df$date,
-     y = variables.df$distribution.compet.2,
-     type = "l")
-
-# max jest outlierem - bylby duzy wplyw na plus, a nie do konca obrazuje to faktyczna sytuacje, srednia wydaje sie byc najlepszym rozwiazaniem
-
-ref.lev['distribution.compet.2'] <- mean(variables.df$`distribution.compet.2`)
-
-
-plot(x = variables.df$date,
-     y = variables.df$media.own,
-     type = "l")
-
-
-#### CZYNNIK INKREMENTALNY ####
-
-# czynniki inkrementalne - zawsze do 0 
-ref.lev['media.own'] <- 0
-
-ref.lev
-
-# przechodzimy na data framey z naszych wektorow
-
+# Przejście na data frame
 ref.lev.df <- data.frame(variables = names(ref.lev),
                          ref.lev = ref.lev)
 
 coeffs.df <- data.frame(variables = names(coeffs),
                         coeffs = coeffs)
 
-#### 3. Odjecie poziomow debazowania od zmiennych i wymnozenie zmiennych razy parametry beta
-
+# Odjęcie poziomów bazowych
 variables.debased.df <- variables.df %>%
-  pivot_longer(-date, names_to = 'variables', values_to = 'value') %>% # przejscie na dlugi format danych
-  left_join(ref.lev.df) %>% # dolaczamy kolumne z poziomem referencyjnym
-  mutate(value.debased = value - ref.lev) %>% # odejmujemy od zmiennej w kazdym tygodniu jej poziom bazowy
-  left_join(coeffs.df) %>% # dolaczenie wspolczynnikow
-  mutate(value.debased = value.debased * coeffs) #wymnozenie wspolczynnikow przez zmienne (bez poziomow bazowania! interesuje nas wplyw vs ten poziom)
+  pivot_longer(-Date, names_to = 'variables', values_to = 'value') %>%
+  left_join(ref.lev.df) %>%
+  mutate(value.debased = value - ref.lev) %>%
+  left_join(coeffs.df) %>%
+  mutate(value.debased = value.debased * coeffs)
 
-
-
-### 4. Dodanie poziomow debazowania * parametry do stalej (odjelismy ten efekt od wplywu zmiennych)
-
+# Dodanie poziomów bazowych do stałej
 
 base.levels.df <- variables.debased.df %>%
   mutate(base.levels.sum = coeffs * ref.lev) %>%
-  group_by(date) %>%
+  group_by(Date) %>%
   summarise('(Intercept)' = sum(base.levels.sum)) %>%
-  pivot_longer(-date, names_to = 'variables', values_to = 'base.levels')
-
-# powstal data frame, ktory dla kazdego tygodnia ma przypisana wartosc poziomow bazowych, ktorych nie wliczamy
-# do wplywu poszczegolnych zmiennych - sa one traktowane jako wartosc bazowa i chcemy je dosumowac do stalej sprzedazy
+  pivot_longer(-Date, names_to = 'variables', values_to = 'base.levels')
 
 decomp.final.df <- variables.debased.df %>%
   left_join(base.levels.df) %>%
   mutate(base.levels = ifelse(is.na(base.levels), 0, base.levels)) %>%
   mutate(value.final = value.debased + base.levels) %>%
-  select(date, variables, value.final)
+  select(Date, variables, value.final)
 
-
-
-### 5. Sprawdzenie czy suma czynnikow zgadza sie z wartoscia fitted z modelu 
-
+# Sprawdzenie czy suma czynników zgadza się z wartością fitted z modelu
 check.df <- decomp.final.df %>%
-  group_by(date) %>%
+  group_by(Date) %>%
   summarise(value.final = sum(value.final)) %>%
-  bind_cols(fitted = model$fitted.values * mean(economiser.data.df$sales)) %>%
+  bind_cols(
+    fitted = model_norm$fitted.values * mean(data.df$VO_B02)) %>%
   mutate(check = value.final - fitted)
-
 sum(check.df$check)
 
-
-
-#### 6. Przygotowanie sobie ramki danych do analizy
-
+# Przygotowanie sobie ramki danych do analizy
 
 decomp.final.df <- decomp.final.df %>%
-  pivot_wider(names_from = variables, values_from = value.final)
+  pivot_wider(names_from = variables, values_from = value.final) %>%
+  mutate(fitted_decomp = rowSums(select(., -Date)),
+         fitted_model = model_norm$fitted.values * mean(data.df$VO_B02))
 
-data.final.df <- economiser.data.df %>%
-  select(date, sales) %>%
+data.final.df <- data.df %>%
+  select(Date, VO_B02) %>%
   left_join(decomp.final.df)
 
 write.csv2(data.final.df, 'decomp_data_final.csv', row.names = F)
 
-#### GOTOWE !!!! ####
+# Wykres wartości rzeczywistych vs fitted (policzonych na dwa sposoby żeby
+#   upewnić się co do dekompozycji)
+p <-  plot_ly(data.final.df,
+              type = "scatter",
+              mode = 'lines',
+              x = ~Date,
+              y = ~VO_B02,
+              name = "VO_B02") %>%
+  add_trace(
+    type = "scatter",
+    mode = 'lines',
+    x = ~Date,
+    y = ~fitted_decomp,
+    name = "fitted_decomp"
+  ) %>%
+  add_trace(
+    type = "scatter",
+    mode = 'lines',
+    x = ~Date,
+    y = ~fitted_model,
+    name = "fitted_model"
+  )
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+
+# Wykres dekompozycyjny
+
+decomp.long.df <- data.final.df %>%
+  select(-c(VO_B02, fitted_decomp, fitted_model)) %>%
+  pivot_longer(
+    cols = -Date,
+    names_to = "variable",
+    values_to = "contribution"
+  )
+
+vars <- unique(decomp.long.df$variable)
+
+cols <- c(
+  "VO_B02"                                             = "#42f5c5",
+  "fitted_model"                                       = "#42c8f5",
+  "(Intercept)"                                        = "#4D4D4D",
+  "I(TI_SEASONALITY/mean(TI_SEASONALITY))"             = "#1F77B4",
+  "DN_adj_B02_S02_12XCN0500_2GR"                       = "#FF7F0E",
+  "DN_adj_B02_S02_08XCN0500_1GR"                       = "#2CA02C",
+  "DN_adj_B02_S02_12XCN0500"                           = "#D62728",
+  "log(PR_B02_S02_04XCN0500)"                          = "#9467BD",
+  "TI_H_MAY"                                           = "#8C564B",
+  "TI_H_EASTER_SUNDAY"                                 = "#E377C2",
+  "TI_H_HALLOWEEN_BEFORE"                              = "#17BECF",
+  "TI_H_PENTECOST"                                     = "#BCBD22",
+  "I(TI_TEM_AVG - TI_TEM_AVG_NORM)"                    = "#AEC7E8",
+  "I(EX_NU_B02/mean(EX_NU_B02))"                       = "#FFBB78",
+  "I(TI_X_2011_05_02 * DN_adj_B02_S02_12XCN0500_2GR)"  = "#98DF8A"
+)
+setdiff(vars, names(cols))
+scales::show_col(cols)
+
+p <-  plot_ly(colors = cols) %>%
+  add_trace(
+    data = data.final.df,
+    type = "scatter",
+    mode = 'lines',
+    x = ~Date,
+    y = ~VO_B02,
+    name = "VO_B02") %>%
+  add_trace(
+    data = data.final.df,
+    type = "scatter",
+    mode = 'lines',
+    x = ~Date,
+    y = ~fitted_model,
+    name = "fitted_model"
+  ) %>%
+  add_bars(
+    data = decomp.long.df,
+    x = ~Date,
+    y = ~contribution,
+    color = ~variable,
+    hovertemplate = paste(
+      "Date: %{x}<br>",
+      "Variable: %{fullData.name}<br>",
+      "Contribution: %{y}<extra></extra>"
+    )
+  ) %>%
+  layout(barmode = "relative")
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+
+
+
+
 
 
 
