@@ -362,7 +362,7 @@ selected_sku_comp <- sku_shares_comp$sku
 # Podobnie jeśli chodzi o ekspozycje konkurencji, sprawdzę tylko B01 w modelu
 #   bo było największe
 rm(brand_names_comp, selected_brands_comp, subbrand_names_comp, sku_names_comp,
-   selected_subbrands_comp, brand_shares_comp, subbrand_shares_comp, tmp)
+   selected_subbrands_comp, brand_shares_comp, subbrand_shares_comp)
 
 ## ANALIZA MEDIÓW MARKI ##
 
@@ -422,7 +422,7 @@ p <- data.df.1 %>%
           color = ~Name)
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
-# trochę widać związek
+# może trochę widać związek
 
 # Wykres TV i wolumenu w pierwszym półroczu 2011
 p <- data.df.1 %>%
@@ -473,11 +473,63 @@ data.df$TI_Y_2011_H1
 data.df$TI_Y_2011_H2
 
 # Dodanie zmiennych rozbitych TV
+
+# Rozbicie zmiennej bez adstocku
 data.df <- data.df %>%
-  mutate(TV50_B02_2010_H1 = TI_Y_2010_H1 * TV50_B02,
-         TV50_B02_2010_H2 = TI_Y_2010_H2 * TV50_B02,
-         TV50_B02_2011_H1 = TI_Y_2011_H1 * TV50_B02,
-         TV50_B02_2011_H2 = TI_Y_2011_H2 * TV50_B02)
+  mutate(TV00_B02_2010_H1 = TI_Y_2010_H1 * TV00_B02,
+         TV00_B02_2010_H2 = TI_Y_2010_H2 * TV00_B02,
+         TV00_B02_2011_H1 = TI_Y_2011_H1 * TV00_B02,
+         TV00_B02_2011_H2 = TI_Y_2011_H2 * TV00_B02)
+data.df.1 <- data.df.1 %>%
+  mutate(TV00_B02_2010_H1 = TI_Y_2010_H1 * TV00_B02,
+         TV00_B02_2010_H2 = TI_Y_2010_H2 * TV00_B02,
+         TV00_B02_2011_H1 = TI_Y_2011_H1 * TV00_B02,
+         TV00_B02_2011_H2 = TI_Y_2011_H2 * TV00_B02)
+
+# Funkcja adstockująca - 
+adstock_fun <- function(column, lvl) {
+  y <- numeric(length(column))
+  y[1] <- column[1]
+  
+  for (i in 2:length(column)) {
+    y[i] <- (1 - lvl) * column[i] + lvl * y[i - 1]
+  }
+  
+  return(y)
+}
+
+# Zadstockowanie levelami 10 - 90
+periods <- c("2010_H1", "2010_H2", "2011_H1", "2011_H2")
+for (lvl in seq(10, 90, 10)) {
+  n <- lvl / 100
+  
+  for (p in periods) {
+    raw_col <- paste0("TV00_B02_", p)
+    ads_col <- paste0("TV", lvl, "_B02_", p)
+    
+    data.df[[ads_col]] <- adstock_fun(data.df[[raw_col]], n)
+    data.df.1[[ads_col]] <- adstock_fun(data.df[[raw_col]], n)
+  }
+}
+
+data.df.1 %>%
+  select(starts_with("TV"))
+
+# Wykres noworozbitych TV
+p <- data.df.1 %>%
+  select(Date, VO_B02, starts_with("TV")) %>%
+  pivot_longer(cols = c(VO_B02, starts_with("TV")),
+               names_to = "Name",
+               values_to = "Value") %>%
+  plot_ly(type = "scatter", 
+          mode = 'lines',
+          x = ~Date, 
+          y = ~Value,
+          color = ~Name)
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+# rozbice w oczywisty sposób zachowuje ogólny kształt całości, więc
+#   dalej nie spodziewam się związku
 
 # Outdoor
 
@@ -513,10 +565,47 @@ browseURL("wykres.html")
 
 # Dodanie zmiennych rozbitych OH
 data.df <- data.df %>%
-  mutate(OH90_B02_2010_H1 = TI_Y_2010_H1 * OH90_B02,
-         OH90_B02_2010_H2 = TI_Y_2010_H2 * OH90_B02,
-         OH90_B02_2011_H1 = TI_Y_2011_H1 * OH90_B02,
-         OH90_B02_2011_H2 = TI_Y_2011_H2 * OH90_B02)
+  mutate(OH00_B02_2010_H1 = TI_Y_2010_H1 * OH00_B02,
+         OH00_B02_2010_H2 = TI_Y_2010_H2 * OH00_B02,
+         OH00_B02_2011_H1 = TI_Y_2011_H1 * OH00_B02,
+         OH00_B02_2011_H2 = TI_Y_2011_H2 * OH00_B02)
+data.df.1 <- data.df.1 %>%
+  mutate(OH00_B02_2010_H1 = TI_Y_2010_H1 * OH00_B02,
+         OH00_B02_2010_H2 = TI_Y_2010_H2 * OH00_B02,
+         OH00_B02_2011_H1 = TI_Y_2011_H1 * OH00_B02,
+         OH00_B02_2011_H2 = TI_Y_2011_H2 * OH00_B02)
+
+# Zadstockowanie levelami 10 - 90
+periods <- c("2010_H1", "2010_H2", "2011_H1", "2011_H2")
+for (lvl in seq(10, 90, 10)) {
+  n <- lvl / 100
+  
+  for (p in periods) {
+    raw_col <- paste0("OH00_B02_", p)
+    ads_col <- paste0("OH", lvl, "_B02_", p)
+    
+    data.df[[ads_col]] <- adstock_fun(data.df[[raw_col]], n)
+    data.df.1[[ads_col]] <- adstock_fun(data.df[[raw_col]], n)
+  }
+}
+
+data.df.1 %>%
+  select(starts_with("OH"))
+
+# Wykres noworozbitych OH
+p <- data.df.1 %>%
+  select(Date, VO_B02, starts_with("OH")) %>%
+  pivot_longer(cols = c(VO_B02, starts_with("OH")),
+               names_to = "Name",
+               values_to = "Value") %>%
+  plot_ly(type = "scatter", 
+          mode = 'lines',
+          x = ~Date, 
+          y = ~Value,
+          color = ~Name)
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+# jak w TV, tu też nie spodziewam się związku
 
 # Radio
 
@@ -542,8 +631,8 @@ p <- data.df.1 %>%
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 # radio w ogóle nie wygląda jakby miało jakikolwiek wpływ, dla formalności
-#   można wstawić i rozbić ale nie powinno wejść. AdStock zobaczymy jak 
-#   będzie w modelu, z teorii 50% jak TV
+#   można by wstawić i rozbić ale nie powinno wejść. AdStock zobaczymy jak 
+#   będzie w modelu, z teorii 50% jak TV. Nawet nie rozbijam
 
 # Kina nie ma
 
@@ -834,7 +923,7 @@ vif(model)
 #     chodzi przecież o efekt w jednym dniu. Na razie zostawiam inkremental-
 #     ność bo raczej się nie wstawia interakcji jak zmiennej nie ma samej i do
 #     doprecyzowania najwyżej. Niezależnie od tego co się wstawi, bardzo ład-
-#     nie wchodzi, jedyne co to podwyższa pval TV50_B02_2011_H1 na 82%, więc
+#     nie wchodzi, jedyne co to podwyższa pval TV50_B02_2011_H1 na 93%, więc
 #     nie ma już za bardzo wyboru i to wyrzucam
 
 jarque.bera.test(model$residuals)
@@ -1104,7 +1193,7 @@ ref.lev.df <- data.frame(variables = names(ref.lev),
 coeffs.df <- data.frame(variables = names(coeffs),
                         coeffs = coeffs)
 
-# Odjęcie poziomów bazowych
+# Odjęcie poziomów bazowych i policzenie wpływów inkrementalnych
 variables.debased.df <- variables.df %>%
   pivot_longer(-Date, names_to = 'variables', values_to = 'value') %>%
   left_join(ref.lev.df) %>%
@@ -1144,12 +1233,15 @@ decomp.final.df <- decomp.final.df %>%
 
 data.final.df <- data.df %>%
   select(Date, VO_B02) %>%
-  left_join(decomp.final.df)
+  left_join(decomp.final.df) %>% 
+  mutate(error_model = VO_B02 - fitted_model)
 
 write.csv2(data.final.df, 'decomp_data_final.csv', row.names = F)
 
+## ANALIZY GRAFICZNE ##
+
 # Wykres wartości rzeczywistych vs fitted (policzonych na dwa sposoby żeby
-#   upewnić się co do dekompozycji)
+#   upewnić się co do dekompozycji) i reszt
 p <-  plot_ly(data.final.df,
               type = "scatter",
               mode = 'lines',
@@ -1169,6 +1261,13 @@ p <-  plot_ly(data.final.df,
     x = ~Date,
     y = ~fitted_model,
     name = "fitted_model"
+  ) %>%
+  add_trace(
+    type = "scatter",
+    mode = 'lines',
+    x = ~Date,
+    y = ~error_model,
+    name = "error_model"
   )
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
@@ -1188,6 +1287,7 @@ vars <- unique(decomp.long.df$variable)
 cols <- c(
   "VO_B02"                                             = "#42f5c5",
   "fitted_model"                                       = "#42c8f5",
+  "error_model"                                       = "#42c8f5",
   "(Intercept)"                                        = "#4D4D4D",
   "I(TI_SEASONALITY/mean(TI_SEASONALITY))"             = "#1F77B4",
   "DN_adj_B02_S02_12XCN0500_2GR"                       = "#FF7F0E",
@@ -1236,7 +1336,412 @@ p <-  plot_ly(colors = cols) %>%
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 
+# Stackbary / kaskadowe statyczne
 
+# Przygotowanie ramki danych
+
+# Wartości bezwzględne zagregowane po latach
+stackbars.abs.df <- data.final.df %>%
+  mutate(Date = as.character(year(Date))) %>%
+  select(-c(fitted_decomp, fitted_model)) %>%
+  group_by(Date) %>%
+  summarise(
+    across(where(is.numeric), ~ sum(.x)
+  )) %>%
+  ungroup()
+
+# Dołączenie sumy w całym okresie
+total_sum <- stackbars.abs.df %>%
+  summarise(
+    Date = "Total",
+    across(-Date, ~ sum(.x))
+  )
+stackbars.abs.df <- stackbars.abs.df %>%
+  bind_rows(total_sum)
+
+# Policzenie wartości procentowych
+stackbars.pct.df <- stackbars.abs.df %>%
+  mutate(
+    across(
+      -Date,
+      ~ .x / VO_B02
+    ),
+    Date = paste0(Date, "_pct")
+  )
+
+# Ramka z wartościami bezwzględnymi i procentowymi
+stackbars.all.df <- bind_rows(
+  stackbars.abs.df,
+  stackbars.pct.df
+)
+
+stackbars.all.df
+
+# Ostateczne sprawdzenie czy się dodaje
+stackbars.all.df %>%
+  mutate(
+    check = rowSums(across(-c(Date, VO_B02))) - VO_B02
+  ) %>%
+  select(Date, VO_B02, check)
+# jest ok
+
+# Do wykresów potrzeba tylko wartości procentowych, i w sumie jest trochę wpły-
+#   wów ujemnych, więc zwykły stackbar może nie pójść, czyli trzeba zrobić wa-
+#   terfall
+
+# Ramki do wykresów kaskadowych statycznych
+waterfall.static.df <- stackbars.pct.df %>%
+  select(-VO_B02) %>%
+  pivot_longer(
+    cols = -Date
+  )
+# widać, że duża część ma kontrybucję praktycznie 0, więc nie ma sensu pokazy-
+#   wać wszystkich (a chciałem na początku od tego zacząć), tylko lepiej od 
+#   razu pogrupować, wyrzucić grupy nieistotne grupy, pokazać wpływy grup i 
+#   ewentualnie potem rozbijać grupy
+
+# Grupuję razem dystrybucję in-outów i święta kalendarzowe.
+#   Po przejrzeniu od razu grupuje też czynniki mało istotne do grupy ,,inne''
+#   (znajdą się w niej sezonowość, temperatura i interakcja)
+waterfall.static.groups.df <- waterfall.static.df %>%
+  mutate(
+    group = case_when(
+      grepl("^DN", name) ~ "Dystrybucja in-outów",
+      grepl("^TI_H", name) ~ "Święta kalendarzowe",
+      grepl("TI_SEA|TI_TEM|TI_X_", name) ~ "Inne czynniki",
+      grepl("Intercept", name) ~ "Sprzedaż bazowa",
+      grepl("EX_NU", name) ~ "Ekspozycje",
+      grepl("PR_", name) ~ "Cena największego SKU",
+      TRUE ~ name
+    )
+  ) %>%
+  group_by(Date, group) %>%
+  summarise(
+    value = sum(value),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(value))
+
+# Zaczynam od totala i ciekawsze rzeczy się najwyżej rozbije
+#   Reszty w totalu do wyrzucenia, z lat sie sumują do 0
+waterfall.static.total.df <- waterfall.static.groups.df %>%
+  filter(Date == "Total_pct",
+         group != "error_model") %>%
+  bind_rows(data.frame(Date = "Total_pct", 
+               group = "Sprzedaż całkowita",
+               value = 1))
+
+# Wykresy kaskadowe statyczne
+
+# Wykres statyczny total
+
+waterfall.static.total.plot.df <- waterfall.static.total.df %>%
+  mutate(
+    end = cumsum(value),
+    start = lag(end, default = 0),
+    
+    start = if_else(group == "Sprzedaż całkowita", 0, start),
+    end = if_else(group == "Sprzedaż całkowita", value, end),
+    
+    ymin = pmin(start, end),
+    ymax = pmax(start, end),
+    
+    id = row_number(),
+    
+    fill = case_when(
+      group %in% c("Sprzedaż bazowa", "Sprzedaż całkowita") ~ "bases",
+      value >= 0 ~ "positive",
+      value < 0 ~ "negative")
+  )
+
+ggplot(waterfall.static.total.plot.df, aes(x = id)) +
+  geom_rect(aes(
+    xmin = id - 0.4,
+    xmax = id + 0.4,
+    ymin = ymin,
+    ymax = ymax,
+    fill = fill
+  )) +
+  geom_text(
+    aes(y = (ymax + 0.05), label = percent(value, accuracy = 0.1)),
+    size = 3
+  ) +
+  scale_fill_manual(values = c(
+    positive = "#4E79A7",
+    negative = "#F28E2B",
+    bases = "#4D4D4D"
+  )) +
+  scale_x_continuous(
+    breaks = waterfall.static.total.plot.df$id,
+    labels = stringr::str_wrap(waterfall.static.total.plot.df$group, width = 10)
+  ) +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  labs(x = NULL, y = NULL) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "none"
+  )
+# najciekawsze są ekspozycje, dystrybucje i cena
+
+# Ramki do wykresów dynamicznych
+
+# Policzenie zmian procentowych z roku na rok dla zmiennych bezpośrednio jest
+#   niemożliwe w niektórych przypadkach, bo niektóre zmienne w 2010 były 0
+
+waterfall.dynamic.df <- stackbars.abs.df %>%
+  filter(Date != "Total") %>%
+  pivot_longer(
+    cols = -Date,
+    names_to = "name",
+    values_to = "value"
+  ) %>%
+  pivot_wider(
+    names_from = Date,
+    values_from = value
+  ) %>%
+  mutate(
+    change = `2011` - `2010`,
+    change_y2y_pct = change / `2010`,
+    change_share = change / (`2011`[name == "VO_B02"] -
+                             `2010`[name == "VO_B02"]),
+    change_share_pct = change_share * change_y2y_pct[1],
+  ) 
+
+sum(waterfall.dynamic.df$change_share_pct)-
+  waterfall.dynamic.df$change_share_pct[1]
+
+total_change <- waterfall.dynamic.df %>%
+  filter(name == "VO_B02")
+total_change$change_share_pct = total_change$change_share_pct + 1
+
+waterfall.dynamic.df <- waterfall.dynamic.df %>%
+  filter(name != "VO_B02") %>%
+  bind_rows(total_change)
+
+# Stała, sezonowość i święta kalendarzowe nic nie wnoszą
+waterfall.dynamic.df <- waterfall.dynamic.df %>%
+  filter(!grepl("Inter", name),
+         !grepl("SEA", name),
+         !grepl("^TI_H", name))
+
+# Grupujemy
+waterfall.dynamic.groups.df <- waterfall.dynamic.df %>%
+  mutate(
+    group = case_when(
+      name == "VO_B02" ~ "2021",
+      grepl("^DN", name) ~ "Dystrybucja in-outów",
+      grepl("^TI_H", name) ~ "Święta kalendarzowe",
+      grepl("TI_SEA|TI_TEM|err|05_02", name) ~ "Inne czynniki",
+      grepl("Intercept", name) ~ "Sprzedaż bazowa",
+      grepl("EX_NU", name) ~ "Ekspozycje",
+      grepl("PR_", name) ~ "Cena największego SKU",
+      TRUE ~ name
+    )
+  ) %>%
+  group_by(group) %>%
+  summarise(
+    value = sum(change_share_pct),
+    .groups = "drop"
+  ) %>%
+  arrange(value)
+
+waterfall.dynamic.groups.df <- bind_rows(
+  tibble(
+    group = "2020",
+    value = 1
+  ),
+  waterfall.dynamic.groups.df
+)
+
+# Wykres dynamiczny
+
+waterfall.dynamic.plot.df <- waterfall.dynamic.groups.df %>%
+  mutate(
+    end = cumsum(value),
+    start = lag(end, default = 0),
+    
+    start = if_else(group %in% c("2020", "2021"), 0, start),
+    end = if_else(group %in% c("2020", "2021"), value, end),
+    
+    ymin = pmin(start, end),
+    ymax = pmax(start, end),
+    
+    id = row_number(),
+    
+    fill = case_when(
+      group %in% c("2020", "2021") ~ "bases",
+      value >= 0 ~ "positive",
+      value < 0 ~ "negative"
+    )
+  )
+
+ggplot(waterfall.dynamic.plot.df, aes(x = id)) +
+  geom_rect(aes(
+    xmin = id - 0.4,
+    xmax = id + 0.4,
+    ymin = ymin,
+    ymax = ymax,
+    fill = fill
+  )) +
+  geom_text(
+    aes(y = ymax + 0.05, label = percent(value, accuracy = 0.1)),
+    size = 3
+  ) +
+  scale_fill_manual(values = c(
+    positive = "#4E79A7",
+    negative = "#F28E2B",
+    bases = "#4D4D4D"
+  )) +
+  scale_x_continuous(
+    breaks = waterfall.dynamic.plot.df$id,
+    labels = stringr::str_wrap(waterfall.dynamic.plot.df$group, width = 10)
+  ) +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  labs(
+    #title = "Zmiana sprzedaży 2021 vs 2020",
+    x = NULL,
+    y = NULL
+  ) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "none"
+  )
+
+# Rozgrupowane
+waterfall.dynamic.ungrouped.df <- waterfall.dynamic.df %>%
+  mutate(
+    group = case_when(
+      name == "VO_B02" ~ "2021",
+      name == "DN_adj_B02_S02_12XCN0500_2GR" ~ "Dystrybucja 12XCN0500 2GR",
+      name == "DN_adj_B02_S02_08XCN0500_1GR" ~ "Dystrybucja 08XCN0500 1GR",
+      name == "DN_adj_B02_S02_12XCN0500" ~ "Dystrybucja 12XCN0500",
+      grepl("PR_", name) ~ "Cena największego SKU",
+      grepl("EX_NU", name) ~ "Ekspozycje",
+      grepl("TI_TEM", name) ~ "Temperatura",
+      grepl("05_02", name) ~ "Interakcja 02.05",
+      name == "error_model" ~ "Błąd modelu",
+      TRUE ~ name
+    )
+  ) %>%
+  transmute(
+    group,
+    value = change_share_pct
+  ) %>%
+  arrange(value)
+
+waterfall.dynamic.ungrouped.df <- bind_rows(
+  tibble(group = "2020", value = 1),
+  waterfall.dynamic.ungrouped.df
+)
+
+# Wykres dynamiczny
+
+waterfall.dynamic.plot.df <- waterfall.dynamic.ungrouped.df %>%
+  mutate(
+    end = cumsum(value),
+    start = lag(end, default = 0),
+    start = if_else(group %in% c("2020", "2021"), 0, start),
+    end = if_else(group %in% c("2020", "2021"), value, end),
+    ymin = pmin(start, end),
+    ymax = pmax(start, end),
+    id = row_number(),
+    fill = case_when(
+      group %in% c("2020", "2021") ~ "base",
+      grepl("Dystrybucja", group) ~ "distribution",
+      grepl("Ekspozyc", group) ~ "exposition",
+      grepl("Cena", group) ~ "price",
+      grepl("Temperatura|Interakcja|Błąd", group) ~ "other"
+    )
+  )
+
+ggplot(waterfall.dynamic.plot.df, aes(x = id)) +
+  geom_rect(aes(
+    xmin = id - 0.4,
+    xmax = id + 0.4,
+    ymin = ymin,
+    ymax = ymax,
+    fill = fill
+  )) +
+  geom_text(
+    aes(y = ymax + 0.05, label = percent(value, accuracy = 0.1)),
+    size = 3
+  ) +
+  scale_fill_manual(values = c(
+    base = "#4D4D4D",
+    distribution = "#2dc4ae",
+    exposition = "#2d46c4",
+    price = "#F28E2B",
+    other = "#A0CBE8"
+  )) +
+  scale_x_continuous(
+    breaks = waterfall.dynamic.plot.df$id,
+    labels = stringr::str_wrap(waterfall.dynamic.plot.df$group, width = 10)
+  ) +
+  scale_y_continuous(labels = percent) +
+  theme_minimal() +
+  labs(
+    #title = "Zmiana sprzedaży 2021 vs 2020",
+    x = NULL,
+    y = NULL
+  ) +
+  theme(
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "none"
+  )
+
+
+
+
+
+#### SYNTETYCZNA ANALIZA MEDIÓW (TV) #### 
+
+# Jako że zmienne mediowe nie weszły do modelu, to zgodnie z zaleceniami przep-
+#   rowadzę analizę syntetyczną według instrukcji:
+#     1. Proszę wybrać jedno medium dla marki (np. TV) i wybrać do niego jakiś 
+#          poziom adstocku (np. 80%) oraz jakiś denominator. Wybór poziomu ad-
+#          stocku i denominatora będzie mał w tym przypadku charakter arbitral-
+#          ny (ich wartości nie będą pochodziły z modelu)
+#     2. Dla tego medium proszę policzyć współczynnik beta (coefficient), tak 
+#          aby ROI danego kanału mediowego (przy założonym wyżej adstocku i de-
+#          nominatorze) wynosił 1.00. Taki parametr beta można policzyć ręcz-
+#          nie – jest to rozwiązanie równania z jedną niewiadomą (a niewiadomą 
+#          jest ten coefficient).
+#     3. Do optymalizacji mediów proszę użyć tego cofficienta dla tego medium
+#     4. Dla pozostałych mediów coffecienty będą wynosić 0 i w konsekwencji ROI
+#          również 0
+#     5. Pomimo, że zmiennych mediowych nie będzie w modelu, pozwoli to zopty-
+#          malizować budżet mediowy (pomimo, że w finalnym modelu nie będzie
+#          zmiennych mediowych)
+#
+# Wybrane medium to TV, a poziom adstocku 50%
+
+# Denominator powinien być w przedziale od max(adstock.variable) / tan(1.5)
+#   max(adstock.variable) / tan(0.6) do
+max(data.df$TV50_B02) / tan(1.5)
+max(data.df$TV50_B02) / tan(0.6)
+# czyli +/- od 19 do 393, wybieram 100
+
+# Parametr wyznaczamy tak, żeby ROI było równe 1, czyli po przekształceniu wzo-
+#   ru dostajemy:
+#                                   koszt netto medium 
+#     beta =  ----------------------------------------------------------------
+#              mean(VO_B02) * sum(atan(X / den)) * marża * (1 / st. pokrycia)
+#
+#   Marżę, stopień pokrycia i koszty przyjmuję +/- z zajęć (9 PLN, 75%, 15 mln)
+
+# Obliczenie bety
+
+beta <- 15000000 /
+  (mean(data.df$VO_B02) * sum(atan(data.df$TV50_B02 / 100)) * 9 * (1 / 0.75))
 
 
 
