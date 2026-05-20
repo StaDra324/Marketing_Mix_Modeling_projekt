@@ -5,6 +5,25 @@ library(lmtest)
 library(tseries)
 library(sandwich)
 library(stargazer)
+library(scales)
+
+## Spis treści ##
+#                                                    linijki
+# - WCZYTANIE I WSTĘPNE OGARNIĘCIE DANYCH       ||  28   - 60
+# - ANALIZA EKSPLORACYJNO - GRAFICZNA           ||  61   - 678
+#     - WYKRESY                                 ||    65   - 120
+#     - SELEKCJA SKUs MARKI                     ||    121  - 181
+#     - WYKRESY CD.                             ||    182  - 303
+#     - ANALIZA SKUs KONKURENCJI                ||    304  - 385
+#     - ANALIZA MEDIÓW MARKI                    ||    386  - 657
+#     - MAKROEKONOMIA                           ||    658  - 678
+# - MODELOWANIE                                 ||  679  - 830
+# - WALIDACJA MODELU                            ||  831  - 1118
+# - DEKOMPOZYCJA MODELU                         ||  1119 - 1723
+#     - WYBÓR POZIOMÓW BAZOWYCH                 ||    1139 - 1259
+#     - ANALIZY GRAFICZNE                       ||    1250 - 1723
+# - SYNTETYCZNA ANALIZA MEDIÓW (TV)             ||  1721 - 1774
+
 
 #### WCZYTANIE I WSTĘPNE OGARNIĘCIE DANYCH ####
 
@@ -463,7 +482,7 @@ browseURL("wykres.html")
 # Ogólnie po analizie graficznej rzeczywiście najlepiej dopasowany wydaje
 #   się AdStock 50%, aczkolwiek i tak raczej nie spodziewam się żeby zmienne
 #   były istotne, ewentualnie dla drugiego półrocza 2010. Ale żeby to spraw-
-#   dzić rozbijam po półroczach z AdStockiem 50%
+#   dzić rozbijam po półroczach
 
 # Rozbicie TV na półrocza
 
@@ -1097,7 +1116,7 @@ model_hac
 # Czyli pomimo chwili zawahania model zostaje bez zmian
 
 
-#### DEKOMPOZYJA MODELU ####
+#### DEKOMPOZYCJA MODELU ####
 
 # Jako, że coeftest nie tworzy obiektu, do dekompozycji używam model_norm
 
@@ -1282,25 +1301,63 @@ decomp.long.df <- data.final.df %>%
     values_to = "contribution"
   )
 
+decomp.long.df$variable <- dplyr::recode(
+  decomp.long.df$variable,
+  "(Intercept)" = "Sprzedaż bazowa",
+  "I(TI_SEASONALITY/mean(TI_SEASONALITY))" = "Sezonowość",
+  "DN_adj_B02_S02_12XCN0500_2GR" = "Dystrybucja B02_S02_12XCN0500_2GR",
+  "DN_adj_B02_S02_08XCN0500_1GR" = "Dystrybucja B02_S02_08XCN0500_1GR",
+  "DN_adj_B02_S02_12XCN0500" = "Dystrybucja B02_S02_12XCN0500",
+  "log(PR_B02_S02_04XCN0500)" = "Cena B02_S02_04XCN0500",
+  "TI_H_MAY" = "Majówka",
+  "TI_H_EASTER_SUNDAY" = "Niedziela Wielkanocna",
+  "TI_H_HALLOWEEN_BEFORE" = "tydzień przed Halloween",
+  "TI_H_PENTECOST" = "Pentecoste",
+  "I(TI_TEM_AVG - TI_TEM_AVG_NORM)" = "Odchylenie temperatury",
+  "I(EX_NU_B02/mean(EX_NU_B02))" = "Ekspozycja",
+  "I(TI_X_2011_05_02 * DN_adj_B02_S02_12XCN0500_2GR)" = "02.05.2011",
+  "error_model" = "Błąd modelu"
+)
+
+decomp.long.df$variable <- factor(
+  decomp.long.df$variable,
+  levels = c(
+    "Sprzedaż bazowa",
+    "Cena B02_S02_04XCN0500",
+    "Ekspozycja",
+    "Sezonowość",
+    "Odchylenie temperatury",    
+    "Dystrybucja B02_S02_12XCN0500_2GR",
+    "Dystrybucja B02_S02_08XCN0500_1GR",
+    "Dystrybucja B02_S02_12XCN0500",
+    "Majówka",
+    "Niedziela Wielkanocna",
+    "tydzień przed Halloween",
+    "Pentecoste",
+    "02.05.2011",
+    "Błąd modelu"
+  )
+)
+
 vars <- unique(decomp.long.df$variable)
 
 cols <- c(
-  "VO_B02"                                             = "#42f5c5",
-  "fitted_model"                                       = "#42c8f5",
-  "error_model"                                       = "#42c8f5",
-  "(Intercept)"                                        = "#4D4D4D",
-  "I(TI_SEASONALITY/mean(TI_SEASONALITY))"             = "#1F77B4",
-  "DN_adj_B02_S02_12XCN0500_2GR"                       = "#FF7F0E",
-  "DN_adj_B02_S02_08XCN0500_1GR"                       = "#2CA02C",
-  "DN_adj_B02_S02_12XCN0500"                           = "#D62728",
-  "log(PR_B02_S02_04XCN0500)"                          = "#9467BD",
-  "TI_H_MAY"                                           = "#8C564B",
-  "TI_H_EASTER_SUNDAY"                                 = "#E377C2",
-  "TI_H_HALLOWEEN_BEFORE"                              = "#17BECF",
-  "TI_H_PENTECOST"                                     = "#BCBD22",
-  "I(TI_TEM_AVG - TI_TEM_AVG_NORM)"                    = "#AEC7E8",
-  "I(EX_NU_B02/mean(EX_NU_B02))"                       = "#FFBB78",
-  "I(TI_X_2011_05_02 * DN_adj_B02_S02_12XCN0500_2GR)"  = "#98DF8A"
+  "Sprzedaż oszacowana"                               = "#9467BD",  
+  "Sprzedaż rzeczywista"                              = "#f55ff5",
+  "Błąd modelu"                                       = "#D62728",
+  "Sprzedaż bazowa"                                   = "#889094",
+  "Sezonowość"                                        = "#051b4f",
+  "Dystrybucja B02_S02_12XCN0500_2GR"                 = "#1F77B4",
+  "Dystrybucja B02_S02_08XCN0500_1GR"                 = "#42c8f5",
+  "Dystrybucja B02_S02_12XCN0500"                     = "#7fadc9",
+  "Cena B02_S02_04XCN0500"                            = "#F28E2B",
+  "Majówka"                                           = "#f0e007",
+  "Niedziela Wielkanocna"                             = "#c7bb14",
+  "tydzień przed Halloween"                           = "#9c942a",
+  "Pentecoste"                                        = "#706b26",
+  "Odchylenie temperatury"                            = "#17594a",
+  "Ekspozycja"                                        = "#42f5c5",
+  "02.05.2011"                                        = "#FFBB78"
 )
 setdiff(vars, names(cols))
 scales::show_col(cols)
@@ -1311,15 +1368,21 @@ p <-  plot_ly(colors = cols) %>%
     type = "scatter",
     mode = 'lines',
     x = ~Date,
-    y = ~VO_B02,
-    name = "VO_B02") %>%
+    y = ~fitted_model,
+    name = "Sprzedaż oszacowana",
+    line = list(color = cols["Sprzedaż oszacowana"],
+                width = 4,
+                dash = "dashdot")
+  ) %>%
   add_trace(
     data = data.final.df,
     type = "scatter",
     mode = 'lines',
     x = ~Date,
-    y = ~fitted_model,
-    name = "fitted_model"
+    y = ~VO_B02,
+    name = "Sprzedaż rzeczywista",
+    line = list(color = cols["Sprzedaż rzeczywista"],
+                width = 6)
   ) %>%
   add_bars(
     data = decomp.long.df,
@@ -1332,7 +1395,17 @@ p <-  plot_ly(colors = cols) %>%
       "Contribution: %{y}<extra></extra>"
     )
   ) %>%
-  layout(barmode = "relative")
+  layout(barmode = "relative",
+         xaxis = list(
+           title = "",
+           showgrid = FALSE
+         ),
+         yaxis = list(
+           title = "Wolumen",
+           showgrid = FALSE,
+           zeroline = TRUE,
+           zerolinecolor = "black"
+         ))
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 
@@ -1411,7 +1484,7 @@ waterfall.static.groups.df <- waterfall.static.df %>%
       grepl("TI_SEA|TI_TEM|TI_X_", name) ~ "Inne czynniki",
       grepl("Intercept", name) ~ "Sprzedaż bazowa",
       grepl("EX_NU", name) ~ "Ekspozycje",
-      grepl("PR_", name) ~ "Cena największego SKU",
+      grepl("PR_", name) ~ "Cena 04XCN0500",
       TRUE ~ name
     )
   ) %>%
@@ -1454,35 +1527,63 @@ waterfall.static.total.plot.df <- waterfall.static.total.df %>%
       value < 0 ~ "negative")
   )
 
+waterfall.static.total.plot.df <- waterfall.static.total.plot.df %>%
+  mutate(
+    label = percent(value, accuracy = 0.1),
+    label_color = if_else(group %in% c("Sprzedaż całkowita"), "base", "main")
+  )
+
 ggplot(waterfall.static.total.plot.df, aes(x = id)) +
   geom_rect(aes(
-    xmin = id - 0.4,
-    xmax = id + 0.4,
+    xmin = id - 0.43,
+    xmax = id + 0.43,
     ymin = ymin,
     ymax = ymax,
     fill = fill
   )) +
   geom_text(
-    aes(y = (ymax + 0.05), label = percent(value, accuracy = 0.1)),
-    size = 3
+    aes(
+      y = ymax + 0.05,
+      label = label,
+      color = label_color
+    ),
+    size = 4.1,
+    fontface = "bold"
   ) +
   scale_fill_manual(values = c(
-    positive = "#4E79A7",
+    positive = "#42bcf5",
     negative = "#F28E2B",
-    bases = "#4D4D4D"
+    bases = "#889094"
+  )) +
+  scale_color_manual(values = c(
+    main = "#222222",
+    base = "#889094"
   )) +
   scale_x_continuous(
     breaks = waterfall.static.total.plot.df$id,
-    labels = stringr::str_wrap(waterfall.static.total.plot.df$group, width = 10)
+    labels = str_wrap(waterfall.static.total.plot.df$group, width = 11),
+    expand = expansion(mult = c(0.04, 0.04))
   ) +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
+  scale_y_continuous(
+    labels = percent,
+    expand = expansion(mult = c(0.02, 0.09))
+  ) +
   labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 13) +
   theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(
+      size = 11,
+      color = "#4a4a4a",
+      lineheight = 0.95,
+      margin = margin(t = 8)
+    ),
     axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
+    axis.ticks = element_blank(),
     panel.grid = element_blank(),
-    legend.position = "none"
+    legend.position = "none",
+    plot.margin = margin(t = 12, r = 12, b = 12, l = 12)
   )
 # najciekawsze są ekspozycje, dystrybucje i cena
 
@@ -1531,13 +1632,13 @@ waterfall.dynamic.df <- waterfall.dynamic.df %>%
 waterfall.dynamic.groups.df <- waterfall.dynamic.df %>%
   mutate(
     group = case_when(
-      name == "VO_B02" ~ "2021",
+      name == "VO_B02" ~ "2011",
       grepl("^DN", name) ~ "Dystrybucja in-outów",
       grepl("^TI_H", name) ~ "Święta kalendarzowe",
       grepl("TI_SEA|TI_TEM|err|05_02", name) ~ "Inne czynniki",
       grepl("Intercept", name) ~ "Sprzedaż bazowa",
       grepl("EX_NU", name) ~ "Ekspozycje",
-      grepl("PR_", name) ~ "Cena największego SKU",
+      grepl("PR_", name) ~ "Cena 04XCN0500",
       TRUE ~ name
     )
   ) %>%
@@ -1550,7 +1651,7 @@ waterfall.dynamic.groups.df <- waterfall.dynamic.df %>%
 
 waterfall.dynamic.groups.df <- bind_rows(
   tibble(
-    group = "2020",
+    group = "2010",
     value = 1
   ),
   waterfall.dynamic.groups.df
@@ -1563,8 +1664,8 @@ waterfall.dynamic.plot.df <- waterfall.dynamic.groups.df %>%
     end = cumsum(value),
     start = lag(end, default = 0),
     
-    start = if_else(group %in% c("2020", "2021"), 0, start),
-    end = if_else(group %in% c("2020", "2021"), value, end),
+    start = if_else(group %in% c("2010", "2011"), 0, start),
+    end = if_else(group %in% c("2010", "2011"), value, end),
     
     ymin = pmin(start, end),
     ymax = pmax(start, end),
@@ -1572,58 +1673,87 @@ waterfall.dynamic.plot.df <- waterfall.dynamic.groups.df %>%
     id = row_number(),
     
     fill = case_when(
-      group %in% c("2020", "2021") ~ "bases",
-      value >= 0 ~ "positive",
-      value < 0 ~ "negative"
+      group %in% c("2010", "2011") ~ "bases",
+      grepl("^Dyst", group) ~ "distribution",
+      grepl("^Świę", group) ~ "holidays",
+      grepl("^Inn", group) ~ "other",
+      grepl("^Eks", group) ~ "exposition",
+      grepl("^Ce", group) ~ "price"
     )
+  )
+
+waterfall.dynamic.plot.df <- waterfall.dynamic.plot.df %>%
+  mutate(
+    label = percent(value, accuracy = 0.1),
+    label_color = if_else(group %in% c("2010"), "base", "main")
   )
 
 ggplot(waterfall.dynamic.plot.df, aes(x = id)) +
   geom_rect(aes(
-    xmin = id - 0.4,
-    xmax = id + 0.4,
+    xmin = id - 0.43,
+    xmax = id + 0.43,
     ymin = ymin,
     ymax = ymax,
     fill = fill
   )) +
   geom_text(
-    aes(y = ymax + 0.05, label = percent(value, accuracy = 0.1)),
-    size = 3
+    aes(
+      y = ymax + 0.05,
+      label = label,
+      color = label_color
+    ),
+    size = 4.1,
+    fontface = "bold"
   ) +
   scale_fill_manual(values = c(
-    positive = "#4E79A7",
-    negative = "#F28E2B",
-    bases = "#4D4D4D"
+    distribution = "#42bcf5",
+    exposition = "#42f5f5",
+    price = "#F28E2B",
+    other = "#254aba",
+    bases = "#889094"
+  )) +
+  scale_color_manual(values = c(
+    main = "#222222",
+    base = "#4f575a"
   )) +
   scale_x_continuous(
     breaks = waterfall.dynamic.plot.df$id,
-    labels = stringr::str_wrap(waterfall.dynamic.plot.df$group, width = 10)
+    labels = str_wrap(waterfall.dynamic.plot.df$group, width = 11),
+    expand = expansion(mult = c(0.04, 0.04))
   ) +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  labs(
-    #title = "Zmiana sprzedaży 2021 vs 2020",
-    x = NULL,
-    y = NULL
+  scale_y_continuous(
+    labels = percent,
+    expand = expansion(mult = c(0.02, 0.10))
   ) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 13) +
   theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(
+      size = 11,
+      color = "#4a4a4a",
+      lineheight = 0.95,
+      margin = margin(t = 8)
+    ),
     axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
+    axis.ticks = element_blank(),
     panel.grid = element_blank(),
-    legend.position = "none"
+    legend.position = "none",
+    plot.margin = margin(t = 12, r = 12, b = 12, l = 12)
   )
 
 # Rozgrupowane
 waterfall.dynamic.ungrouped.df <- waterfall.dynamic.df %>%
   mutate(
     group = case_when(
-      name == "VO_B02" ~ "2021",
+      name == "VO_B02" ~ "2011",
       name == "DN_adj_B02_S02_12XCN0500_2GR" ~ "Dystrybucja 12XCN0500 2GR",
       name == "DN_adj_B02_S02_08XCN0500_1GR" ~ "Dystrybucja 08XCN0500 1GR",
       name == "DN_adj_B02_S02_12XCN0500" ~ "Dystrybucja 12XCN0500",
-      grepl("PR_", name) ~ "Cena największego SKU",
+      grepl("PR_", name) ~ "Cena 04XCN0500",
       grepl("EX_NU", name) ~ "Ekspozycje",
-      grepl("TI_TEM", name) ~ "Temperatura",
+      grepl("TI_TEM", name) ~ "Odchylenie temperatury",
       grepl("05_02", name) ~ "Interakcja 02.05",
       name == "error_model" ~ "Błąd modelu",
       TRUE ~ name
@@ -1636,7 +1766,7 @@ waterfall.dynamic.ungrouped.df <- waterfall.dynamic.df %>%
   arrange(value)
 
 waterfall.dynamic.ungrouped.df <- bind_rows(
-  tibble(group = "2020", value = 1),
+  tibble(group = "2010", value = 1),
   waterfall.dynamic.ungrouped.df
 )
 
@@ -1646,60 +1776,80 @@ waterfall.dynamic.plot.df <- waterfall.dynamic.ungrouped.df %>%
   mutate(
     end = cumsum(value),
     start = lag(end, default = 0),
-    start = if_else(group %in% c("2020", "2021"), 0, start),
-    end = if_else(group %in% c("2020", "2021"), value, end),
+    start = if_else(group %in% c("2010", "2011"), 0, start),
+    end = if_else(group %in% c("2010", "2011"), value, end),
     ymin = pmin(start, end),
     ymax = pmax(start, end),
     id = row_number(),
     fill = case_when(
-      group %in% c("2020", "2021") ~ "base",
+      group %in% c("2010", "2011") ~ "base",
       grepl("Dystrybucja", group) ~ "distribution",
       grepl("Ekspozyc", group) ~ "exposition",
       grepl("Cena", group) ~ "price",
-      grepl("Temperatura|Interakcja|Błąd", group) ~ "other"
+      grepl("temperatury|Interakcja|Błąd", group) ~ "other"
     )
+  )
+
+waterfall.dynamic.plot.df <- waterfall.dynamic.plot.df %>%
+  mutate(
+    label = percent(value, accuracy = 0.1),
+    label_color = if_else(group %in% c("2010"), "base", "main")
   )
 
 ggplot(waterfall.dynamic.plot.df, aes(x = id)) +
   geom_rect(aes(
-    xmin = id - 0.4,
-    xmax = id + 0.4,
+    xmin = id - 0.40,
+    xmax = id + 0.40,
     ymin = ymin,
     ymax = ymax,
     fill = fill
   )) +
   geom_text(
-    aes(y = ymax + 0.05, label = percent(value, accuracy = 0.1)),
-    size = 3
+    aes(
+      y = ymax + 0.05,
+      label = label,
+      color = label_color
+    ),
+    size = 3.8,
+    fontface = "bold"
   ) +
   scale_fill_manual(values = c(
-    base = "#4D4D4D",
-    distribution = "#2dc4ae",
-    exposition = "#2d46c4",
+    base = "#889094",
+    distribution = "#42bcf5",
+    exposition = "#42f5f5",
     price = "#F28E2B",
-    other = "#A0CBE8"
+    other = "#254aba"
+  )) +
+  scale_color_manual(values = c(
+    main = "#222222",
+    base = "#4f575a"
   )) +
   scale_x_continuous(
     breaks = waterfall.dynamic.plot.df$id,
-    labels = stringr::str_wrap(waterfall.dynamic.plot.df$group, width = 10)
+    labels = stringr::str_wrap(waterfall.dynamic.plot.df$group, width = 10),
+    expand = expansion(mult = c(0.035, 0.035))
   ) +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  labs(
-    #title = "Zmiana sprzedaży 2021 vs 2020",
-    x = NULL,
-    y = NULL
+  scale_y_continuous(
+    labels = percent,
+    expand = expansion(mult = c(0.02, 0.10))
   ) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 13) +
   theme(
-    axis.text.x = element_text(size = 8),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(
+      size = 10,
+      color = "#4a4a4a",
+      lineheight = 0.92,
+      margin = margin(t = 8)
+    ),
     axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
+    axis.ticks = element_blank(),
     panel.grid = element_blank(),
-    legend.position = "none"
+    legend.position = "none",
+    plot.margin = margin(t = 12, r = 12, b = 12, l = 12)
   )
-
-
-
 
 
 #### SYNTETYCZNA ANALIZA MEDIÓW (TV) #### 
@@ -1730,21 +1880,202 @@ max(data.df$TV50_B02) / tan(1.5)
 max(data.df$TV50_B02) / tan(0.6)
 # czyli +/- od 19 do 393, wybieram 100
 
-# Parametr wyznaczamy tak, żeby ROI było równe 1, czyli po przekształceniu wzo-
-#   ru dostajemy:
+# Parametr wyznaczamy tak, żeby ROI z całego okresu było równe 1, czyli po 
+# przekształceniu wzoru dostajemy:
 #                                   koszt netto medium 
 #     beta =  ----------------------------------------------------------------
 #              mean(VO_B02) * sum(atan(X / den)) * marża * (1 / st. pokrycia)
-#
-#   Marżę, stopień pokrycia i koszty przyjmuję +/- z zajęć (9 PLN, 75%, 15 mln)
+
+# Marżę, stopień pokrycia i koszty bierzemy z briefu
+marza <- 1
+st_pokrycia <- 0.05
+TV_cost <- sum(data.df$TV00_B02) * 1000
 
 # Obliczenie bety
+beta_tv <- TV_cost /
+  (mean(data.df$VO_B02) * 
+     sum(atan(data.df$TV50_B02 / 100)) * marza * (1 / st_pokrycia))
 
-beta <- 15000000 /
-  (mean(data.df$VO_B02) * sum(atan(data.df$TV50_B02 / 100)) * 9 * (1 / 0.75))
+# Sprawdzenie ROI
+beta_tv * sum(atan(data.df$TV50_B02 / 100)) * 
+  mean(data.df$VO_B02) * marza * (1 / st_pokrycia) / TV_cost
 
+# Obliczenie wpływów tygodniowych mediów na sprzedaż (dla TV używamy wyliczonej
+#   bety, dla radio i outdoru beta będzie 0 i w konsekswencji wpływ również)
+data.df <- data.df %>%
+  mutate(TV = beta_tv * mean(data.df$VO_B02) * atan(data.df$TV50_B02 / 100),
+         RA = 0,
+         OH = 0)
 
+# Optymalizuję budżet z 2011
 
+# Obliczenie wpływów rocznych 2011
+data.2011.df <- data.df %>%
+  filter(Date > "2010-12-31") 
+impact.annual.2011.tv = sum(data.2011.df$TV)
+impact.annual.2011.ra = sum(data.2011.df$RA)
+impact.annual.2011.oh = sum(data.2011.df$OH)
+
+# Obliczenie rocznych przychodów 2011
+reve.tv <- impact.annual.2011.tv * marza / st_pokrycia
+reve.ra <- impact.annual.2011.ra * marza / st_pokrycia
+reve.oh <- impact.annual.2011.oh * marza / st_pokrycia
+
+# Obliczenie kosztów rocznych 2011 (TV trzeba przeliczyć z GRP, reszta jest 
+#   podana w wartościach kosztów)
+cost.tv <- sum(data.2011.df$TV00_B02) * 1000
+cost.ra <- sum(data.2011.df$RA00_B02)
+cost.oh <- sum(data.2011.df$OH00_B02)
+
+# Obliczenie ROI 2011 (dla RA i OH będą 0)
+reve.tv / cost.tv
+reve.ra / cost.ra
+reve.oh / cost.oh
+# radio nie było w budżecie 2011, a nie ma też wpływu,  więc nie będzie go w 
+#   optymalizacji / realokacji budżetu
+
+# Określenie liczby tygodni w których media były kupowane
+weeks.tv <- nrow(data.2011.df %>% filter(TV00_B02 > 0))    
+weeks.oh <- nrow(data.2011.df %>% filter(OH00_B02 > 0)) 
+
+# Przeskalowanie denominatorów (tylko TV, bo OH i tak 0)
+den.tv <- 100 * (max(data.df$TV00_B02) / max(data.df$TV50_B02))
+
+# Rozwiązanie równania na wyznaczenie krzywej rocznej:
+#
+#                                      PRZYCHOD.ROCZNY
+#   X = ----------------------------------------------------------------
+#                              KOSZTY ROCZNE / (CPU * LICZBA TYGODNI)
+#         LICZBA.TYG * ATAN( ---------------------------------------- )
+#                                       DENOMINATOR_2
+
+x.tv <- reve.tv / (weeks.tv * atan(cost.tv / (weeks.tv * 1000 * den.tv)))
+x.oh <- 0
+
+# Narysowanie krzywych dla kosztóW od 0 do 150% historycznych
+cost.min <- 0
+cost.max <- 1.5 * cost.tv
+
+resp.curve <- seq(cost.min, cost.max, by = 5000)
+
+resp.curves.df <- data.frame(Cost = resp.curve) %>%
+  mutate(TV = x.tv * weeks.tv * atan(Cost / (1000 * weeks.tv * den.tv)),
+         OH = 0,
+         ROI.TV = TV / Cost,
+         ROI.OH = OH / Cost,
+         marginal.TV = TV - lag(TV),
+         marginal.OH = OH - lag(OH))
+
+resp.curves.long.df <- resp.curves.df %>%
+  pivot_longer(-Cost, names_to = "Channel")
+
+options(scipen = 8)
+
+# Wykres krzywych rocznych
+p <- ggplotly(
+  ggplot(resp.curves.long.df %>% filter(Channel %in% c("TV", "OH")),
+         aes(x = Cost, y = value, col = Channel)) +
+    geom_line() + 
+    ggtitle("Response curves: revenue vs. investment")
+)
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+
+# Wykres zysków krańcowych
+p <- ggplotly(
+  ggplot(resp.curves.long.df %>% filter(Channel %in% c("marginal.TV", 
+                                                       "marginal.OH")),
+         aes(x = Cost, y = value, col = Channel)) +
+    geom_line() + 
+    ggtitle("Marginal revenue vs. investment")
+)
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+
+## OPTYMALIZACJA HISTORYCZNEGO BUDŻETU ##
+
+# Ogólnie jako że jest tylko radio i tv, a radio nic nie daje, to bez oficjal-
+#   nej optymalizacji wiadmomo że trzeba po prostu władować wszystko w TV, ale
+#   gdyby były ,,normalne'' wartości, to trzeba by było to policzyć
+
+# Przy optymalizacji przyjmujemy następujące założenia:
+#   - budżet całkowity jest taki jaki był
+#   - liczba emitowanych tygodni jest taka, jak była
+#   - na każde medium trzeba wydać min. 50% tego co było
+#   - na każde medium można wydac max. 200% tego co było
+
+# Obliczenie całkowitego budżetu
+budget <- cost.tv + cost.oh
+
+# Ustawienie ograniczeń min i max
+min.cost.tv <- 0.5 * cost.tv
+min.cost.oh <- 0.5 * cost.oh
+max.cost.tv <- 2 * cost.tv
+max.cost.oh <- 2 * cost.oh
+
+df.plt.df <- resp.curves.df %>%
+  select(Cost_TV = Cost, TV) %>%
+  cross_join(resp.curves.df %>%
+               select(Cost_OH = Cost, OH)) %>%
+  mutate(total_reve = TV + OH)
+
+# Mamy tylko dwa kanały, więc można zrobić taki wykres (przy >2 ciężko)
+ggplot(df.plt.df,
+       aes(x = Cost_TV, y = Cost_OH, z = total_reve)) +
+  geom_contour_filled() + 
+  geom_abline(slope = -1, intercept = cost.tv + cost.oh, 
+              col = 'red', linewidth = 1) +
+  annotate("text", x = 600000, y = cost.tv + cost.oh, 
+           label = "ograniczenie budżetowe", col = "red") +
+  ggtitle("Total revenue vs. TV and OH investment") +
+  theme_minimal()
+
+# Przy dwóch kanałach można też po prostu zrobić tabelkę i posortować po reve
+df.plt.df %>%
+  mutate(totcost = Cost_TV + Cost_OH) %>%
+  filter(totcost >= budget - 2500,
+         totcost <= budget + 2500,
+         Cost_TV >= min.cost.tv,
+         Cost_TV <= max.cost.tv,
+         Cost_OH >= min.cost.oh,
+         Cost_OH <= max.cost.oh) %>%
+  View()
+
+# Przypadku ogólnym chodzi o to żeby zrównać przychody krańcowe przy danym og-
+#   raniczeniu budżetowym
+
+# Maksymalny krańcowy przychód możliwy do osiągnięcia
+max.marginal.revenue.all.media <- max(max(
+  resp.curves.df$marginal.TV[2:nrow(resp.curves.df)]),
+                                      max(
+  resp.curves.df$marginal.OH[2:nrow(resp.curves.df)]))
+
+# Pomocniczy data.frame
+optimization.df <- resp.curves.df %>%
+  filter(is.na(marginal.TV) == F) %>%
+  mutate(marginal.TV.modified = ifelse(Cost < min.cost.tv, 
+                                       max(max.marginal.revenue.all.media),
+                                       ifelse(Cost > max.cost.tv, 0, 
+                                              marginal.TV))) %>%
+  mutate(marginal.OH.modified = ifelse(Cost < min.cost.oh, 
+                                       max(max.marginal.revenue.all.media),
+                                       ifelse(Cost > max.cost.oh, 0, 
+                                              marginal.OH)))
+
+# Wykres przychodów krańcowych uwzględniających ograniczenia
+p <- ggplotly(
+  ggplot(optimization.df %>%
+           select(Cost, starts_with('marginal')) %>%
+           pivot_longer(-Cost),
+         aes(x = Cost, y = value, col = name)) +
+    geom_line() +
+    ggtitle("Marginal revenue vs. investment")
+)
+htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
+browseURL("wykres.html")
+# widać, że coś trzeba wrzucić w OH ale wszystko inne co się da idzie w TV
+
+# Czyli w ramach realokacji historycznego budżetu
 
 
 
