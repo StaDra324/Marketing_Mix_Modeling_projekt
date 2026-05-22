@@ -1,3 +1,5 @@
+
+
 library(tidyverse)
 library(plotly)
 library(car)
@@ -6,23 +8,24 @@ library(tseries)
 library(sandwich)
 library(stargazer)
 library(scales)
+library(ggrepel)
 
 ## Spis treści ##
 #                                                    linijki
-# - WCZYTANIE I WSTĘPNE OGARNIĘCIE DANYCH       ||  28   - 60
-# - ANALIZA EKSPLORACYJNO - GRAFICZNA           ||  61   - 678
-#     - WYKRESY                                 ||    65   - 120
-#     - SELEKCJA SKUs MARKI                     ||    121  - 181
-#     - WYKRESY CD.                             ||    182  - 303
-#     - ANALIZA SKUs KONKURENCJI                ||    304  - 385
-#     - ANALIZA MEDIÓW MARKI                    ||    386  - 657
-#     - MAKROEKONOMIA                           ||    658  - 678
-# - MODELOWANIE                                 ||  679  - 830
-# - WALIDACJA MODELU                            ||  831  - 1118
-# - DEKOMPOZYCJA MODELU                         ||  1119 - 1723
-#     - WYBÓR POZIOMÓW BAZOWYCH                 ||    1139 - 1259
-#     - ANALIZY GRAFICZNE                       ||    1250 - 1723
-# - SYNTETYCZNA ANALIZA MEDIÓW (TV)             ||  1721 - 1774
+# - WCZYTANIE I WSTĘPNE OGARNIĘCIE DANYCH       ||  31   - 63
+# - ANALIZA EKSPLORACYJNO - GRAFICZNA           ||  64   - 681
+#     - WYKRESY                                 ||    68   - 123
+#     - SELEKCJA SKUs MARKI                     ||    124  - 184
+#     - WYKRESY CD.                             ||    185  - 306
+#     - ANALIZA SKUs KONKURENCJI                ||    307  - 388
+#     - ANALIZA MEDIÓW MARKI                    ||    389  - 660
+#     - MAKROEKONOMIA                           ||    661  - 681
+# - MODELOWANIE                                 ||  682  - 833
+# - WALIDACJA MODELU                            ||  834  - 1121
+# - DEKOMPOZYCJA MODELU                         ||  1122 - 1857
+#     - WYBÓR POZIOMÓW BAZOWYCH                 ||    1142 - 1262
+#     - ANALIZY GRAFICZNE                       ||    1263 - 1857
+# - SYNTETYCZNA ANALIZA MEDIÓW (TV)             ||  1858 - 2262
 
 
 #### WCZYTANIE I WSTĘPNE OGARNIĘCIE DANYCH ####
@@ -1883,7 +1886,7 @@ max(data.df$TV50_B02) / tan(0.6)
 # Parametr wyznaczamy tak, żeby ROI z całego okresu było równe 1, czyli po 
 # przekształceniu wzoru dostajemy:
 #                                   koszt netto medium 
-#     beta =  ----------------------------------------------------------------
+#     beta =  ————————————————————————————————————————————————————————————————
 #              mean(VO_B02) * sum(atan(X / den)) * marża * (1 / st. pokrycia)
 
 # Marżę, stopień pokrycia i koszty bierzemy z briefu
@@ -1934,6 +1937,136 @@ reve.oh / cost.oh
 # radio nie było w budżecie 2011, a nie ma też wpływu,  więc nie będzie go w 
 #   optymalizacji / realokacji budżetu
 
+# Wykres ROI
+
+options(scipen = 8)
+
+# Dane do wykresu
+roi.plot.df <- tibble(
+  medium = c("TV", "OH"),
+  cost = c(cost.tv, cost.oh),
+  revenue = c(reve.tv, reve.oh)
+) %>%
+  mutate(
+    ROI = revenue / cost,
+    roi_label = sprintf("%.2f", ROI)
+  )
+
+# Skala pomocnicza dla ROI, żeby romby były nad słupkami
+max_bar <- max(c(roi.plot.df$cost, roi.plot.df$revenue), na.rm = TRUE)
+
+roi.plot.df <- tibble(
+  medium = c("TV", "OH"),
+  cost = c(cost.tv, cost.oh),
+  revenue = c(reve.tv, reve.oh)
+) %>%
+  mutate(
+    ROI = revenue / cost,
+    roi_label = sprintf("%.2f", ROI)
+  )
+
+roi.plot.long.df <- roi.plot.df %>%
+  pivot_longer(
+    cols = c(cost, revenue),
+    names_to = "type",
+    values_to = "value"
+  ) %>%
+  mutate(
+    type = dplyr::recode(
+      type,
+      cost = "Koszt",
+      revenue = "Inkrementalny zysk"
+    )
+  )
+
+ggplot() +
+  geom_col(
+    data = roi.plot.long.df,
+    aes(x = medium, y = value, fill = type),
+    position = position_dodge(width = 0.8),
+    width = 0.8
+  ) +
+  geom_point(
+    data = roi.plot.df,
+    aes(x = medium, y = pmax(cost, revenue) * 1.18),
+    shape = 23,
+    size = 14,
+    fill = "#8FE6DD",
+    color = "#8FE6DD"
+  ) +
+  geom_text(
+    data = roi.plot.df,
+    aes(x = medium, y = pmax(cost, revenue) * 1.18, label = roi_label),
+    color = "white",
+    size = 4,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Koszt" = "#115c32",
+      "Inkrementalny zysk" = "#2FA99A"
+    )
+  ) +
+  labs(
+    x = NULL,
+    y = "PLN",
+    fill = NULL,
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = max(roi.plot.long.df$value) * 1.33,
+    label = "Koszt",
+    color = "#115c32",
+    fontface = "bold",
+    size = 4,
+    hjust = 0
+  ) +
+  annotate(
+    "text",
+    x = 0.1325,
+    y = max(roi.plot.long.df$value) * 1.33,
+    label = "|",
+    color = "grey50",
+    size = 4
+  ) +
+  annotate(
+    "text",
+    x = 0.33,
+    y = max(roi.plot.long.df$value) * 1.33,
+    label = "Inkrementalny zysk",
+    color = "#2FA99A",
+    fontface = "bold",
+    size = 4
+  ) +
+  annotate(
+    "text",
+    x = 0.53,
+    y = max(roi.plot.long.df$value) * 1.33,
+    label = "|",
+    color = "grey50",
+    size = 4
+  ) +
+  annotate(
+    "text",
+    x = 0.58,
+    y = max(roi.plot.long.df$value) * 1.33,
+    label = "ROI",
+    color = "#8FE6DD",
+    fontface = "bold",
+    size = 4
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(color = "#166F64", face = "bold", size = 12),
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 13),
+    panel.grid.major.y = element_blank(),
+    axis.title.y = element_text(size = 10)
+  )
+
 # Określenie liczby tygodni w których media były kupowane
 weeks.tv <- nrow(data.2011.df %>% filter(TV00_B02 > 0))    
 weeks.oh <- nrow(data.2011.df %>% filter(OH00_B02 > 0)) 
@@ -1944,17 +2077,17 @@ den.tv <- 100 * (max(data.df$TV00_B02) / max(data.df$TV50_B02))
 # Rozwiązanie równania na wyznaczenie krzywej rocznej:
 #
 #                                      PRZYCHOD.ROCZNY
-#   X = ----------------------------------------------------------------
+#   X = ————————————————————————————————————————————————————————————————
 #                              KOSZTY ROCZNE / (CPU * LICZBA TYGODNI)
-#         LICZBA.TYG * ATAN( ---------------------------------------- )
+#         LICZBA.TYG * ATAN( —————————————————————————————————————————— )
 #                                       DENOMINATOR_2
 
 x.tv <- reve.tv / (weeks.tv * atan(cost.tv / (weeks.tv * 1000 * den.tv)))
 x.oh <- 0
 
-# Narysowanie krzywych dla kosztóW od 0 do 150% historycznych
+# Narysowanie krzywych rocznych dla kosztóW od 0 do 200% historycznych
 cost.min <- 0
-cost.max <- 1.5 * cost.tv
+cost.max <- 2 * cost.tv
 
 resp.curve <- seq(cost.min, cost.max, by = 5000)
 
@@ -1972,14 +2105,40 @@ resp.curves.long.df <- resp.curves.df %>%
 options(scipen = 8)
 
 # Wykres krzywych rocznych
-p <- ggplotly(
-  ggplot(resp.curves.long.df %>% filter(Channel %in% c("TV", "OH")),
-         aes(x = Cost, y = value, col = Channel)) +
-    geom_line() + 
-    ggtitle("Response curves: revenue vs. investment")
-)
-htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
-browseURL("wykres.html")
+
+label.df <- resp.curves.long.df %>%
+  filter(Channel %in% c("TV", "OH")) %>%
+  group_by(Channel) %>%
+  slice_max(Cost, n = 1) %>%
+  ungroup()
+
+ggplot(
+  resp.curves.long.df %>% filter(Channel %in% c("TV", "OH")),
+  aes(x = Cost, y = value, color = Channel)
+  ) +
+  geom_line(linewidth = 1.2) +
+  geom_text_repel(
+    data = label.df,
+    aes(label = Channel),
+    show.legend = FALSE,
+    direction = "y",
+    hjust = 0,
+    nudge_x = max(resp.curves.long.df$Cost) * 0.03,
+    segment.color = NA,
+    fontface = "bold"
+  ) +
+  labs(
+    x = "Koszt",
+    y = "Przychód"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    legend.position = "none"
+  )
 
 # Wykres zysków krańcowych
 p <- ggplotly(
@@ -2020,19 +2179,46 @@ df.plt.df <- resp.curves.df %>%
   mutate(total_reve = TV + OH)
 
 # Mamy tylko dwa kanały, więc można zrobić taki wykres (przy >2 ciężko)
+step <- 500000
+
+breaks.reve <- seq(
+  floor(min(df.plt.df$total_reve, na.rm = TRUE) / step) * step,
+  ceiling(max(df.plt.df$total_reve, na.rm = TRUE) / step) * step,
+  by = step
+)
+
+cols.bugn <- colorRampPalette(RColorBrewer::brewer.pal(9, "BuGn"))(
+  length(breaks.reve) - 1
+)
+
 ggplot(df.plt.df,
        aes(x = Cost_TV, y = Cost_OH, z = total_reve)) +
-  geom_contour_filled() + 
+  geom_contour_filled(breaks = breaks.reve) + 
+  labs(
+    x = "Wydatki TV",
+    y = "Wydatki OH",
+    fill = "Łączny przychód"
+  ) +
+  scale_fill_manual(values = cols.bugn) +
   geom_abline(slope = -1, intercept = cost.tv + cost.oh, 
-              col = 'red', linewidth = 1) +
-  annotate("text", x = 600000, y = cost.tv + cost.oh, 
-           label = "ograniczenie budżetowe", col = "red") +
-  ggtitle("Total revenue vs. TV and OH investment") +
-  theme_minimal()
+              col = 'darkgray', linewidth = 1) +
+  annotate("text", x = 1150000, y = cost.tv + cost.oh, 
+           label = "ograniczenie budżetowe", 
+           col = "darkgray", fontface = "bold") +
+  theme_minimal() +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank()
+  )
 
-# Przy dwóch kanałach można też po prostu zrobić tabelkę i posortować po reve
+# Ogólnie najłatwiej prostu zrobić tabelkę i posortować po reve / profitach (w
+#   zależności od tego czy maksymalizujemy zysk czy sprzedaż)
 df.plt.df %>%
-  mutate(totcost = Cost_TV + Cost_OH) %>%
+  mutate(totcost = Cost_TV + Cost_OH,
+         profit_TV = TV - Cost_TV,
+         profit_OH = OH - Cost_OH) %>%
   filter(totcost >= budget - 2500,
          totcost <= budget + 2500,
          Cost_TV >= min.cost.tv,
@@ -2074,8 +2260,3 @@ p <- ggplotly(
 htmlwidgets::saveWidget(p, "wykres.html", selfcontained = TRUE)
 browseURL("wykres.html")
 # widać, że coś trzeba wrzucić w OH ale wszystko inne co się da idzie w TV
-
-# Czyli w ramach realokacji historycznego budżetu
-
-
-
